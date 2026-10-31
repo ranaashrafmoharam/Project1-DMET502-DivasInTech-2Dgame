@@ -1,0 +1,21 @@
+#include "HUD.h"
+// ====================================================================
+// FILE:     src/ui/HUD.cpp
+// OWNER:    Member 4
+// TASKS:    M4-05
+// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+//
+// PURPOSE:
+//   Always-on screen display during gameplay.
+//
+// RESPONSIBILITIES:
+//   - Coin counter at the top of the screen
+//   - Current wave and enemies remaining
+//   - Tell the cards when coins change
+//
+// PLANNED PUBLIC INTERFACE (names to agree on, implemented in this file):
+//   - setCoins(n)
+//   - draw(waveInfo)
+//
+// INTERACTS WITH: TextRenderer, WaveManager, PlayerCards, Collectible
+// ====================================================================
