@@ -1,23 +1,33 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Shader.h
-// OWNER:    Member 1
-// TASKS:    M1-01
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Loads, compiles and links shader programs from the
-//   assets/shaders folder and lets other code set uniforms.
-//
-// RESPONSIBILITIES:
-//   - Read vertex/fragment shader files
-//   - Report compile and link errors
-//   - Set uniforms (matrices, colour, tint, grayscale flag)
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - load(vertPath, fragPath)
-//   - use()
-//   - setMat4 / setVec4 / setFloat / setBool
-//
-// INTERACTS WITH: Renderer, TextRenderer
+// Loads, compiles and links shader programs and sets uniforms.
 // ====================================================================
+
+#include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <string>
+
+class Shader {
+public:
+    GLuint id = 0;
+
+    Shader() = default;
+    ~Shader();
+
+    bool loadFromFiles(const std::string& vertPath, const std::string& fragPath);
+    bool loadFromStrings(const std::string& vertSrc, const std::string& fragSrc);
+
+    void use() const;
+
+    void setMat4(const std::string& name, const glm::mat4& mat) const;
+    void setVec4(const std::string& name, const glm::vec4& val) const;
+    void setVec3(const std::string& name, const glm::vec3& val) const;
+    void setVec2(const std::string& name, const glm::vec2& val) const;
+    void setFloat(const std::string& name, float val) const;
+    void setInt(const std::string& name, int val) const;
+    void setBool(const std::string& name, bool val) const;
+
+private:
+    GLuint compile(GLenum type, const char* src);
+};

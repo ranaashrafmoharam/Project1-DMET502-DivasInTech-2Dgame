@@ -1,27 +1,33 @@
 #pragma once
 // ====================================================================
 // FILE:     src/entities/Enemy.h
-// OWNER:    Member 2
-// TASKS:    M2-02
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The three enemy types (Easy upper-ranged, Medium lower-ranged,
-//   Hard melee) with their stats and behaviour.
-//
-// RESPONSIBILITIES:
-//   - Health: Easy 5, Medium 5, Hard 7
-//   - Damage 1 per attack, Hard deals 2
-//   - Advance left automatically, Hard runs faster
-//   - Easy fires HIGH attacks, Medium fires LOW attacks, Hard attacks in melee
-//   - takeDamage(), isDead(), drops a collectible on death
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(dt)
-//   - draw()
-//   - takeDamage(amount)
-//   - isDead()
-//   - attackHeight()
-//
-// INTERACTS WITH: Entity, CharacterModels, Animation, WaveManager, CollisionSystem
+// Serpentine Enemies: Venomari (Easy), Hypnobrai (Medium), Constrictai (Hard).
 // ====================================================================
+
+#include "Entity.h"
+#include <string>
+
+class Enemy : public Entity {
+public:
+    Enemy(EntityType enemyType, int laneIdx, float startX);
+
+    void update(float dt) override;
+    void draw() override;
+
+    bool canAttack() const { return m_attackCooldown <= 0.0f; }
+    void resetAttackCooldown();
+
+    int getDamage() const { return m_damage; }
+
+    bool isFighting = false;
+    bool readyToShoot = false;
+
+private:
+    float m_speed = 50.0f;
+    int m_damage = 1;
+    float m_attackCooldown = 0.0f;
+    float m_attackInterval = 1.2f;
+    float m_animTime = 0.0f;
+
+    std::string m_spriteName;
+};

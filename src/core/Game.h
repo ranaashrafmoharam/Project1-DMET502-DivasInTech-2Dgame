@@ -1,29 +1,54 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Game.h
-// OWNER:    Member 1
-// TASKS:    M1-01, M1-03, M1-05, M1-11
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The heart of the program. Owns the state machine, the main loop,
-//   all entity lists and the reset logic. Every other system is
-//   called from here.
-//
-// RESPONSIBILITIES:
-//   - Run the loop: input -> update -> render, once per frame
-//   - Switch states and keep track of the current state
-//   - Hold lists of players, enemies, projectiles and collectibles
-//   - Call each system's update/draw depending on the state
-//   - Detect win/lose and switch to WON / LOST
-//   - reset(): clear everything so Restart works from any state
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - run()
-//   - setState(state)
-//   - reset()
-//   - update(dt)
-//   - render()
-//
-// INTERACTS WITH: Input, Renderer, LaneGrid, WaveManager, CollisionSystem, Scene, HUD, Menus, Cutscene
+// The heart of the program: state machine, main loop, entity lists,
+// win/lose detection, reset, update, and render.
 // ====================================================================
+
+#include <vector>
+#include <memory>
+#include "GameState.h"
+#include "../entities/Player.h"
+#include "../entities/Enemy.h"
+#include "../entities/Projectile.h"
+#include "../entities/Collectible.h"
+
+struct GLFWwindow;
+
+class Game {
+public:
+    Game() = default;
+    ~Game() = default;
+
+    bool init(GLFWwindow* window);
+    void run();
+
+    void setState(GameState s);
+    GameState getState() const { return m_state; }
+
+    void startCutscene();
+    void reset();
+    void quit();
+
+    void update(float dt);
+    void render();
+
+    int getCoins() const { return m_coins; }
+    void addCoins(int amount) { m_coins += amount; }
+
+    void enableAutoTest(bool enable) { m_autoTest = enable; }
+    static bool saveScreenshotBMP(const std::string& path, int width, int height);
+
+private:
+    GLFWwindow* m_window = nullptr;
+    GameState m_state = GameState::MAIN_MENU;
+    bool m_autoTest = false;
+    int m_autoTestFrame = 0;
+
+    int m_coins = 30; // Starting coins (US-22: enough for 3 Melee players)
+
+    std::vector<std::shared_ptr<Player>> m_players;
+    std::vector<std::shared_ptr<Enemy>> m_enemies;
+    std::vector<std::shared_ptr<Projectile>> m_projectiles;
+    std::vector<std::shared_ptr<Collectible>> m_collectibles;
+};

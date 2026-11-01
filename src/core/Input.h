@@ -1,25 +1,45 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Input.h
-// OWNER:    Member 1
-// TASKS:    M1-01, M1-04
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Wraps raw GLFW callbacks into a simple query API so game code
-//   never touches GLFW directly.
-//
-// RESPONSIBILITIES:
-//   - Track mouse position in world coordinates
-//   - Track left-click events (pressed this frame)
-//   - Track W / Up, S / Down and Esc presses
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - getMouseWorldPos()
-//   - wasLeftClicked()
-//   - jumpPressed()
-//   - duckPressed()
-//   - escPressed()
-//
-// INTERACTS WITH: LaneGrid, PlayerCards, Menus, Game
+// Wraps GLFW callbacks into queries: mouse position, clicks, keys.
 // ====================================================================
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+
+class Input {
+public:
+    static Input& instance();
+
+    void init(GLFWwindow* window);
+    void newFrame();
+
+    // Queries
+    glm::vec2 getMouseWorldPos() const { return m_mouseWorld; }
+    bool wasLeftClicked() const { return m_leftClicked; }
+    bool isLeftDown() const { return m_leftDown; }
+    bool jumpPressed() const { return m_jumpPressed; }
+    bool duckPressed() const { return m_duckPressed; }
+    bool escPressed() const { return m_escPressed; }
+    bool spacePressed() const { return m_spacePressed; }
+    bool enterPressed() const { return m_enterPressed; }
+
+    // GLFW callback handlers
+    void onMouseButton(int button, int action);
+    void onKey(int key, int action);
+    void updateCursor(double xpos, double ypos, int winW, int winH);
+
+private:
+    Input() = default;
+
+    glm::vec2 m_mouseWorld{0.0f, 0.0f};
+    bool m_leftClicked = false;
+    bool m_leftDown = false;
+
+    bool m_jumpPressed = false;
+    bool m_duckPressed = false;
+    bool m_escPressed = false;
+    bool m_spacePressed = false;
+    bool m_enterPressed = false;
+};

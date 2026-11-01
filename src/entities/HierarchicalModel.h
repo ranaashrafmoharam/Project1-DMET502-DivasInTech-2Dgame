@@ -1,25 +1,31 @@
 #pragma once
 // ====================================================================
 // FILE:     src/entities/HierarchicalModel.h
-// OWNER:    Member 2
-// TASKS:    M2-01
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Reusable parent-child transform system for building characters
-//   from parts (body, head, arms, legs, weapon) that can move
-//   independently.
-//
-// RESPONSIBILITIES:
-//   - Hold a tree of parts with local transforms
-//   - Draw the tree using the Renderer's transform stack
-//   - Let animations set each part's pose
-//   - Attach weapon models from Member 3
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - addPart(name, parent, shape)
-//   - setPose(name, transform)
-//   - draw()
-//
-// INTERACTS WITH: CharacterModels, Animation, Renderer, PropModels
+// Hierarchical model system supporting parent-child transforms.
 // ====================================================================
+
+#include <glm/glm.hpp>
+#include <vector>
+#include <string>
+
+struct ModelPart {
+    std::string name;
+    glm::vec2 offset{0.0f, 0.0f};
+    float rotation = 0.0f;
+    glm::vec2 scale{1.0f, 1.0f};
+    glm::vec4 color{1.0f};
+    std::vector<ModelPart> children;
+};
+
+class HierarchicalModel {
+public:
+    HierarchicalModel() = default;
+
+    void setRoot(const ModelPart& root) { m_root = root; }
+    void draw(float x, float y, float scale = 1.0f, bool flipX = false);
+
+private:
+    void drawPart(const ModelPart& part, const glm::mat4& parentTransform);
+
+    ModelPart m_root;
+};

@@ -1,19 +1,23 @@
 #pragma once
 // ====================================================================
 // FILE:     src/models/Mesh.h
-// OWNER:    Member 3
-// TASKS:    M3-14
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   OPTIONAL. One piece of drawable geometry (vertices, indices,
-//   textures) with its own VAO/VBO/EBO; draw() binds its textures
-//   and calls glDrawElements.
-//
-// RESPONSIBILITIES:
-//   - Own vertex data and textures
-//   - Set up buffers
-//   - Draw itself
-//
-// INTERACTS WITH: Model, Texture
+// Lightweight mesh buffer representation.
 // ====================================================================
+
+#include <glad/glad.h>
+#include <vector>
+
+struct Vertex {
+    float x, y, z;
+    float u, v;
+};
+
+class Mesh {
+public:
+    GLuint vao = 0;
+    GLuint vbo = 0;
+    GLuint ebo = 0;
+    GLsizei indexCount = 0;
+
+    Mesh() = default;
+};

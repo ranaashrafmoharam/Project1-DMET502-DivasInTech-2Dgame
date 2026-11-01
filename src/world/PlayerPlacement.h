@@ -1,21 +1,21 @@
 #pragma once
 // ====================================================================
 // FILE:     src/world/PlayerPlacement.h
-// OWNER:    Member 1
-// TASKS:    M1-05
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Places a purchased player on the grid.
-//
-// RESPONSIBILITIES:
-//   - Require a selected card and a selected lane
-//   - Check and deduct coins
-//   - Spawn the player at the leftmost x of the lane
-//   - Lock the player to that lane
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - tryPlace(cardType, lane)
-//
-// INTERACTS WITH: PlayerCards, LaneGrid, Player, HUD
+// Handles checking affordability, deducting coins, and spawning
+// defenders at the leftmost position of a selected lane.
 // ====================================================================
+
+#include <vector>
+#include <memory>
+#include "../entities/Player.h"
+
+class PlayerPlacement {
+public:
+    static PlayerPlacement& instance();
+
+    bool tryPlacePlayer(int selectedCard, int targetLane, int& currentCoins,
+                        std::vector<std::shared_ptr<Player>>& players);
+
+private:
+    PlayerPlacement() = default;
+};

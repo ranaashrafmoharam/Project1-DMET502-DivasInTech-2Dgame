@@ -1,26 +1,36 @@
 #pragma once
 // ====================================================================
 // FILE:     src/world/LaneGrid.h
-// OWNER:    Member 1
-// TASKS:    M1-04
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The lane system: converts the mouse into a lane and tracks hover
-//   and selection.
-//
-// RESPONSIBILITIES:
-//   - Mouse position to lane index
-//   - Track hovered lane
-//   - Left click toggles lane selected; multiple lanes allowed
-//   - Provide the selected-lane list for jump/duck
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(mouse, click)
-//   - isHovered(lane)
-//   - isSelected(lane)
-//   - getSelectedLanes()
-//   - clear()
-//
-// INTERACTS WITH: Input, LaneHighlight, Game, Player
+// Converts mouse position to lane, tracks hovered lane, toggles
+// selection (multiple lanes allowed) for jump/duck/placement.
 // ====================================================================
+
+#include <glm/glm.hpp>
+#include <vector>
+#include "../core/Constants.h"
+
+class LaneGrid {
+public:
+    static LaneGrid& instance();
+
+    void init();
+    void reset();
+
+    void update(glm::vec2 mousePos, bool leftClicked);
+    void draw();
+
+    int getHoveredLane() const { return m_hoveredLane; }
+    bool isLaneSelected(int lane) const;
+    void toggleLane(int lane);
+    void selectSingleLane(int lane);
+    void clearSelection();
+
+    std::vector<int> getSelectedLanes() const;
+    int laneAt(glm::vec2 worldPos) const;
+
+private:
+    LaneGrid() = default;
+
+    int m_hoveredLane = -1;
+    bool m_selected[Constants::NUM_LANES] = {false};
+};

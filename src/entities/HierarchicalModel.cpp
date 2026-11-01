@@ -1,25 +1,31 @@
 #include "HierarchicalModel.h"
-// ====================================================================
-// FILE:     src/entities/HierarchicalModel.cpp
-// OWNER:    Member 2
-// TASKS:    M2-01
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Reusable parent-child transform system for building characters
-//   from parts (body, head, arms, legs, weapon) that can move
-//   independently.
-//
-// RESPONSIBILITIES:
-//   - Hold a tree of parts with local transforms
-//   - Draw the tree using the Renderer's transform stack
-//   - Let animations set each part's pose
-//   - Attach weapon models from Member 3
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, implemented in this file):
-//   - addPart(name, parent, shape)
-//   - setPose(name, transform)
-//   - draw()
-//
-// INTERACTS WITH: CharacterModels, Animation, Renderer, PropModels
-// ====================================================================
+#include "../core/Renderer.h"
+#include <glm/gtc/matrix_transform.hpp>
+
+void HierarchicalModel::draw(float x, float y, float scale, bool flipX) {
+    Renderer& ren = Renderer::instance();
+    glm::mat4 base = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
+    if (flipX) {
+        base = glm::scale(base, glm::vec3(-scale, scale, 1.0f));
+    } else {
+        base = glm::scale(base, glm::vec3(scale, scale, 1.0f));
+    }
+
+    ren.pushTransform(base);
+    drawPart(m_root, base);
+    ren.popTransform();
+}
+
+void HierarchicalModel::drawPart(const ModelPart& part, const glm::mat4& parentTransform) {
+    Renderer& ren = Renderer::instance();
+    glm::mat4 current = glm::translate(parentTransform, glm::vec3(part.offset, 0.0f));
+    current = glm::rotate(current, part.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    current = glm::scale(current, glm::vec3(part.scale, 1.0f));
+
+    // Render part rectangle
+    ren.drawRect(-part.scale.x * 0.5f, -part.scale.y * 0.5f, part.scale.x, part.scale.y, part.color);
+
+    for (const auto& child : part.children) {
+        drawPart(child, current);
+    }
+}

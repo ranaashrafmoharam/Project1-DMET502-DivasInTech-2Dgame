@@ -1,23 +1,18 @@
 #include "PropModels.h"
-// ====================================================================
-// FILE:     src/scene/PropModels.cpp
-// OWNER:    Member 3
-// TASKS:    M3-09, M3-10
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Weapon, projectile and collectible visuals.
-//
-// RESPONSIBILITIES:
-//   - Melee and ranged weapons
-//   - Player projectile and enemy upper/lower projectiles
-//   - Collectible/coin model with spin animation
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, implemented in this file):
-//   - drawMeleeWeapon()
-//   - drawRangedWeapon()
-//   - drawProjectile(type)
-//   - drawCollectible()
-//
-// INTERACTS WITH: CharacterModels, Projectile, Collectible
-// ====================================================================
+#include "../core/Renderer.h"
+
+void PropModels::drawMeleeWeapon(float x, float y, float rot) {
+    Renderer::instance().drawSpriteCentered("sword", x, y, 36.0f, 36.0f, false, rot);
+}
+
+void PropModels::drawRangedWeapon(float x, float y, float rot) {
+    Renderer::instance().drawSpriteCentered("shuriken", x, y, 26.0f, 26.0f, false, rot);
+}
+
+void PropModels::drawProjectile(const std::string& type, float x, float y, float rot) {
+    Renderer::instance().drawSpriteCentered(type, x, y, 28.0f, 28.0f, false, rot);
+}
+
+void PropModels::drawCollectible(float x, float y, float rot) {
+    Renderer::instance().drawSpriteCentered("shard", x, y, 32.0f, 32.0f, false, rot);
+}

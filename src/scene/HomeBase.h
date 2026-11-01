@@ -1,21 +1,15 @@
 #pragma once
 // ====================================================================
 // FILE:     src/scene/HomeBase.h
-// OWNER:    Member 3
-// TASKS:    M3-08
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The player's safe zone at the left end of the playfield.
-//
-// RESPONSIBILITIES:
-//   - Detailed structure, clearly different from the environment
-//   - Highly visible against the background
-//   - Its right edge is the losing line used by Member 1
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - draw()
-//   - getBounds()
-//
-// INTERACTS WITH: Scene, CollisionSystem
+// The Monastery Gate safe zone on the left.
 // ====================================================================
+
+class HomeBase {
+public:
+    static HomeBase& instance();
+
+    void draw();
+
+private:
+    HomeBase() = default;
+};

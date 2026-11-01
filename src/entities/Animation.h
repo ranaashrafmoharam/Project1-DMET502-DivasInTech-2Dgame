@@ -1,24 +1,11 @@
 #pragma once
 // ====================================================================
 // FILE:     src/entities/Animation.h
-// OWNER:    Member 2
-// TASKS:    M2-09, M2-10, M2-12
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   All character animation poses driven by time.
-//
-// RESPONSIBILITIES:
-//   - Walk / run / idle cycles
-//   - Melee attack swing
-//   - Jump arc and duck pose
-//   - Death/removal feedback hook
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - updateWalk(model, t)
-//   - updateAttack(model, t)
-//   - updateJump(model, t)
-//   - updateDuck(model, t)
-//
-// INTERACTS WITH: HierarchicalModel, Player, Enemy, Cutscene
+// Time-driven poses and walk cycles.
 // ====================================================================
+
+class Animation {
+public:
+    static float getWalkBob(float time, float speed = 8.0f, float amplitude = 3.0f);
+    static float getLimbSwing(float time, float speed = 8.0f, float maxAngle = 0.4f);
+};

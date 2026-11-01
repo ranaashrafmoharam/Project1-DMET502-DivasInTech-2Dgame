@@ -3,19 +3,34 @@
 // FILE:     src/ui/Button.h
 // OWNER:    Member 4
 // TASKS:    M4-02
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Reusable clickable button for all menus.
-//
-// RESPONSIBILITIES:
-//   - Rectangle with label
-//   - Hover highlight and click detection
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(mouse, click)
-//   - draw()
-//   - wasClicked()
-//
-// INTERACTS WITH: Menus
+// Reusable clickable button with retro Pokemon styling and hover.
 // ====================================================================
+
+#include <glm/glm.hpp>
+#include <string>
+
+class Button {
+public:
+    Button() = default;
+    Button(const std::string& label, float x, float y, float w, float h, float fontScale = 3.0f);
+
+    void setBounds(float x, float y, float w, float h);
+    void setLabel(const std::string& label);
+
+    void update(glm::vec2 mousePos, bool leftClicked);
+    void draw() const;
+
+    bool wasClicked() const { return m_clicked; }
+    bool isHovered() const { return m_hovered; }
+
+private:
+    std::string m_label;
+    float m_x = 0.0f;
+    float m_y = 0.0f;
+    float m_w = 0.0f;
+    float m_h = 0.0f;
+    float m_fontScale = 3.0f;
+
+    bool m_hovered = false;
+    bool m_clicked = false;
+};

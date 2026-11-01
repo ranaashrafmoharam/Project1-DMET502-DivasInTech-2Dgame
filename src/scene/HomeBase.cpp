@@ -1,21 +1,19 @@
 #include "HomeBase.h"
-// ====================================================================
-// FILE:     src/scene/HomeBase.cpp
-// OWNER:    Member 3
-// TASKS:    M3-08
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The player's safe zone at the left end of the playfield.
-//
-// RESPONSIBILITIES:
-//   - Detailed structure, clearly different from the environment
-//   - Highly visible against the background
-//   - Its right edge is the losing line used by Member 1
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, implemented in this file):
-//   - draw()
-//   - getBounds()
-//
-// INTERACTS WITH: Scene, CollisionSystem
-// ====================================================================
+#include "../core/Renderer.h"
+#include "../core/Constants.h"
+
+HomeBase& HomeBase::instance() {
+    static HomeBase hb;
+    return hb;
+}
+
+void HomeBase::draw() {
+    Renderer& ren = Renderer::instance();
+    // Draws the ornate monastery pagoda gate covering the 4 lanes
+    float gateH = Constants::NUM_LANES * Constants::LANE_HEIGHT + 40.0f;
+    ren.drawSprite("monastery_gate", 0.0f, Constants::FIELD_Y0 - 20.0f, Constants::HOME_BASE_WIDTH, gateH);
+
+    // Glowing golden protective barrier line (the losing line!)
+    ren.drawRect(Constants::FIELD_X0 - 3.0f, Constants::FIELD_Y0, 4.0f, Constants::NUM_LANES * Constants::LANE_HEIGHT,
+                 glm::vec4(1.0f, 0.85f, 0.20f, 0.85f));
+}
