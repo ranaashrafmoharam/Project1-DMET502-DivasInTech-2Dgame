@@ -20,3 +20,15 @@
 //
 // INTERACTS WITH: Scene, Mesh, HUD, PlayerCards
 // ====================================================================
+
+#pragma once
+
+#include <string>
+
+class Texture
+{
+public:
+    static unsigned int load(const std::string& path);
+    static void bind(unsigned int texture, unsigned int slot = 0);
+    static void clearCache();
+};

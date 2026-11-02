@@ -19,3 +19,20 @@
 //
 // INTERACTS WITH: Scene, CollisionSystem
 // ====================================================================
+
+#pragma once
+
+struct HomeBaseBounds
+{
+    float left;
+    float right;
+    float bottom;
+    float top;
+};
+
+class HomeBase
+{
+public:
+    void draw();
+    HomeBaseBounds getBounds() const;
+};

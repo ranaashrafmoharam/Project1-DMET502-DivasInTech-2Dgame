@@ -21,3 +21,14 @@
 //
 // INTERACTS WITH: CharacterModels, Projectile, Collectible
 // ====================================================================
+
+#pragma once
+
+class PropModels
+{
+public:
+    void drawMeleeWeapon(float x, float y, float angle = 0.0f);
+    void drawRangedWeapon(float x, float y, float angle = 0.0f);
+    void drawProjectile(int type, float x, float y, float rotation = 0.0f);
+    void drawCollectible(float x, float y, float spin = 0.0f);
+};
