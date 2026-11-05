@@ -5,11 +5,47 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include <functional>
 #include <cmath>
 #include <algorithm>
 #include <iostream>
 
 #pragma comment(lib, "winmm.lib")
+
+namespace std {
+struct win32_thread_data {
+    std::function<void()> function;
+};
+
+inline DWORD WINAPI win32_thread_entry(LPVOID parameter) {
+    auto* data = static_cast<win32_thread_data*>(parameter);
+    data->function();
+    delete data;
+    return 0;
+}
+
+class thread {
+public:
+    thread() = default;
+    template<typename Function>
+    explicit thread(Function&& function) {
+        auto* data = new win32_thread_data{std::function<void()>(std::forward<Function>(function))};
+        handle = CreateThread(nullptr, 0, win32_thread_entry, data, 0, nullptr);
+    }
+    ~thread() = default;
+    bool joinable() const { return handle != nullptr; }
+    void join() {
+        if (handle) {
+            WaitForSingleObject(handle, INFINITE);
+            CloseHandle(handle);
+            handle = nullptr;
+        }
+    }
+
+private:
+    HANDLE handle = nullptr;
+};
+}
 
 namespace {
     constexpr int SAMPLE_RATE = 22050;

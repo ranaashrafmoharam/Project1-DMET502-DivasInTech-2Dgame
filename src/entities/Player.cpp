@@ -121,5 +121,4 @@ void Player::draw() {
     ren.setTint(0.0f);
 
     // Visible Health Bar above unit (US-44)
-    hb.draw(x, currentY, width, currentH, health, maxHealth, false);
 }

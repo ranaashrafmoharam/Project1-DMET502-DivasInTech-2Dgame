@@ -4,6 +4,14 @@ project(NinjagoGame CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+FetchContent_MakeAvailable(glfw)
+
 include_directories(
     src
     External/include
@@ -21,7 +29,7 @@ set(ALL_SOURCES
 add_executable(NinjagoGame ${ALL_SOURCES})
 
 target_link_libraries(NinjagoGame PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/External/lib/glfw3.lib
+    glfw
     opengl32
     winmm
 )
@@ -32,4 +40,3 @@ add_custom_command(TARGET NinjagoGame POST_BUILD
         ${CMAKE_CURRENT_SOURCE_DIR}/assets
         $<TARGET_FILE_DIR:NinjagoGame>/assets
 )
-
