@@ -1,21 +1,21 @@
 #pragma once
-// ====================================================================
-// FILE:     src/ui/HUD.h
-// OWNER:    Member 4
-// TASKS:    M4-05
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   Always-on screen display during gameplay.
-//
-// RESPONSIBILITIES:
-//   - Coin counter at the top of the screen
-//   - Current wave and enemies remaining
-//   - Tell the cards when coins change
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - setCoins(n)
-//   - draw(waveInfo)
-//
-// INTERACTS WITH: TextRenderer, WaveManager, PlayerCards, Collectible
-// ====================================================================
+
+#include <string>
+
+struct GameplayHudState
+{
+    int coins = 30;
+    int currentWave = 1;
+    int totalWaves = 3;
+    int enemiesRemaining = 0;
+    int gateMaxHealth = 100;
+    int gateHealth = 100;
+    std::string notification;
+    float notificationAlpha = 0.0f;
+};
+
+class HUD
+{
+public:
+    void draw(const GameplayHudState& state) const;
+};

@@ -3,7 +3,7 @@
 // FILE:     src/scene/EnvironmentElements.h
 // OWNER:    Member 3
 // TASKS:    M3-03 to M3-07
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   The five or more themed environment objects.
@@ -18,3 +18,16 @@
 //
 // INTERACTS WITH: Scene
 // ====================================================================
+
+#pragma once
+
+class EnvironmentElements
+{
+public:
+    void drawElement1(); // Torii gate
+    void drawElement2(); // Curved monastery roof
+    void drawElement3(); // Clan banners
+    void drawElement4(bool includeLeftLantern = true); // Stone lanterns
+    void drawElement5(); // Training posts and weapon rack
+    void drawElement6(); // Cherry tree
+};

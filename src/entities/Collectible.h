@@ -1,24 +1,24 @@
 #pragma once
-// ====================================================================
-// FILE:     src/entities/Collectible.h
-// OWNER:    Member 4
-// TASKS:    M4-08
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The coin dropped by a defeated enemy.
-//
-// RESPONSIBILITIES:
-//   - Appear where the enemy died, in its lane
-//   - Spin/bob animation
-//   - Be collected when a player touches it
-//   - Report its value so the coin counter updates
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(dt)
-//   - draw()
-//   - getBounds()
-//   - collect()
-//
-// INTERACTS WITH: Entity, PropModels, HUD, PlayerCards
-// ====================================================================
+
+class Collectible
+{
+public:
+    Collectible(float x = 0.0f, float y = 0.0f, int lane = 0, int value = 25);
+
+    void update(float dt);
+    void draw(float time);
+    bool overlapsPlayer(float playerX) const;
+    int collect();
+    bool isCollected() const { return collected; }
+    int getLane() const { return lane; }
+    float getX() const { return x; }
+    float getY() const { return baseY; }
+
+private:
+    float x;
+    float baseY;
+    float animationTime = 0.0f;
+    int lane;
+    int value;
+    bool collected = false;
+};

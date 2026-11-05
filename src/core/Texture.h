@@ -3,7 +3,7 @@
 // FILE:     src/core/Texture.h
 // OWNER:    Member 3
 // TASKS:    M3-14
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   Loads images into OpenGL textures and caches them so the same
@@ -20,3 +20,15 @@
 //
 // INTERACTS WITH: Scene, Mesh, HUD, PlayerCards
 // ====================================================================
+
+#pragma once
+
+#include <string>
+
+class Texture
+{
+public:
+    static unsigned int load(const std::string& path);
+    static void bind(unsigned int texture, unsigned int slot = 0);
+    static void clearCache();
+};

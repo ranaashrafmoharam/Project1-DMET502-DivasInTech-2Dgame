@@ -1,8 +1,8 @@
 #pragma once
 // ====================================================================
 // FILE:     src/cutscene/Cutscene.h
-// OWNER:    Member 4
-// TASKS:    M4-09
+// OWNER:    Member 3 (story cutscene assigned in the project specification)
+// TASKS:    M3-CUTSCENE
 // STATUS:   PLACEHOLDER (documentation only, no implementation yet)
 //
 // PURPOSE:
@@ -22,3 +22,19 @@
 //
 // INTERACTS WITH: Scene, CharacterModels, Animation, TextRenderer, Game
 // ====================================================================
+
+#pragma once
+
+class Cutscene
+{
+public:
+    void update(float dt);
+    void draw();
+    bool isFinished() const;
+    void skip();
+    void reset();
+
+private:
+    float elapsed_ = 0.0f;
+    bool finished_ = false;
+};
