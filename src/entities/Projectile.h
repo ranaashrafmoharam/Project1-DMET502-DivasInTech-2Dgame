@@ -23,6 +23,7 @@
 // ====================================================================
 
 #include "Entity.h"
+#include "../core/Math.h"
 
 // HIGH shots fly at head height and are dodged by ducking (US-30).
 // LOW shots skim the ground and are dodged by jumping (US-29).
@@ -30,7 +31,7 @@ enum class AttackHeight { High, Low };
 
 class Projectile : public Entity {
 public:
-    Projectile() = default;
+    Projectile();
 
     // spawnPos  : bottom-centre of the shot (use Player/Enemy muzzle()).
     // direction : +1 travels right (player shots), -1 travels left (enemy).
@@ -56,6 +57,7 @@ public:
     void onHit();
 
 private:
+    Faction      projectileFaction = Faction::None;
     AttackHeight height      = AttackHeight::High;
     UnitType     ownerType   = UnitType::None;
     float        damage      = 1.0f;

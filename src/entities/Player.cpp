@@ -19,19 +19,39 @@
 
 #include <cmath>
 
+namespace {
+EntityType entityTypeFor(UnitType type) {
+    switch (type) {
+        case UnitType::MeleePlayer: return EntityType::PLAYER_MELEE;
+        case UnitType::RangedPlayer: return EntityType::PLAYER_RANGED;
+        case UnitType::DefensePlayer: return EntityType::PLAYER_DEFENSE;
+        default: return EntityType::PLAYER_MELEE;
+    }
+}
+}
+
+Player::Player()
+    : Entity(EntityType::PLAYER_MELEE, 0, C::PLAYER_SPAWN_X,
+             Constants::getLaneCenterY(0), static_cast<int>(C::MELEE_HEALTH), C::PLAYER_SPEED) {}
+
 // --------------------------------------------------------------------
 // Build the unit: pick the model, then copy the stats for its type.
 // --------------------------------------------------------------------
 void Player::init(UnitType t, int lane_, float spawnX) {
-    type     = t;
-    faction  = Faction::Player;
-    lane     = lane_;
+    unitType = t;
+    type     = entityTypeFor(t);
+    laneIndex = lane_;
     alive    = true;
-    position = { spawnX, C::laneCenterY(lane_) };
+    isFighting = false;
+    shielded = false;
+    Entity::isJumping = false;
+    Entity::isDucking = false;
+    position = glm::vec2(spawnX, Constants::getLaneCenterY(lane_));
 
     model      = CharacterModels::buildForType(t);
-    size       = model.size();
-    baseHeight = size.y;
+    const Vec2 modelSize = model.size();
+    size       = glm::vec2(modelSize.x, modelSize.y);
+    baseHeight = modelSize.y;
 
     switch (t) {
         case UnitType::MeleePlayer:                       // US-25
@@ -55,6 +75,24 @@ void Player::init(UnitType t, int lane_, float spawnX) {
     }
 
     health = maxHealth;
+    cooldown = 0.0f;
+    swingTimer = 0.0f;
+    hitTimer = 0.0f;
+    jumpTimer = 0.0f;
+    duckTimer = 0.0f;
+    jumpLockout = 0.0f;
+    duckLockout = 0.0f;
+    animTime = 0.0f;
+    attacking = false;
+    attackUsed = false;
+    jumping = false;
+    ducking = false;
+    blocked = false;
+    jumpLift = 0.0f;
+    duckAmount = 0.0f;
+    speed = moveSpeed;
+    Entity::attackCooldown = attackCooldown;
+    Entity::attackDamage = static_cast<int>(Player::attackDamage());
 
     // Lay the model out in its resting pose straight away so muzzle()
     // and the hitbox are valid on the very first frame.
@@ -73,7 +111,7 @@ bool Player::claimAttack() {
 }
 
 float Player::attackDamage() const {
-    switch (type) {
+    switch (unitType) {
         case UnitType::MeleePlayer:   return C::PLAYER_DAMAGE;   // 1
         case UnitType::RangedPlayer:  return C::PLAYER_DAMAGE;   // 1, carried by the shot
         default:                      return C::DEFENSE_DAMAGE;  // 0, Defense never attacks
@@ -81,7 +119,7 @@ float Player::attackDamage() const {
 }
 
 float Player::attackRange() const {
-    switch (type) {
+    switch (unitType) {
         case UnitType::MeleePlayer:   return C::MELEE_RANGE;
         case UnitType::RangedPlayer:  return C::RANGED_RANGE;
         default:                      return 0.0f;
@@ -92,7 +130,14 @@ Vec2 Player::muzzle() const {
     if (model.hasPart("weapon")) return model.partWorldPosition("weapon");
     if (model.hasPart("handR"))  return model.partWorldPosition("handR");
     // Fallback: just in front of the chest.
-    return { position.x + facing() * 12.0f, position.y + baseHeight * 0.6f };
+    return { position.x + facing() * 12.0f,
+             C::WORLD_HEIGHT - position.y + baseHeight * 0.1f };
+}
+
+Bounds Player::getBounds() const {
+    const float h = size.y;
+    const float centerY = position.y - jumpLift;
+    return { position.x - size.x * 0.5f, centerY - h * 0.5f, size.x, h };
 }
 
 // --------------------------------------------------------------------
@@ -120,8 +165,8 @@ void Player::startSwing() {
     cooldown   = attackCooldown;
 
     // Attack sounds (US-56): the two players have different weapons.
-    if (type == UnitType::MeleePlayer)       getAudio().playSound(SoundId::SwordSwing);
-    else if (type == UnitType::RangedPlayer) getAudio().playSound(SoundId::ShurikenThrow);
+    if (unitType == UnitType::MeleePlayer)       getAudio().playSound(SoundId::SwordSwing);
+    else if (unitType == UnitType::RangedPlayer) getAudio().playSound(SoundId::ShurikenThrow);
 }
 
 // --------------------------------------------------------------------
@@ -132,7 +177,7 @@ void Player::takeDamage(float amount) {
 
     // US-32: a Defense player in front protects anyone behind it, so a
     // shielded player simply shrugs the hit off.
-    if (shielded) return;
+    if (Entity::shielded) return;
 
     health  -= amount;
     hitTimer = HIT_FLINCH_TIME;
@@ -152,6 +197,7 @@ void Player::update(float dt) {
     if (!isAlive()) return;
 
     animTime += dt;
+    blocked = isFighting;
     if (cooldown > 0.0f) cooldown -= dt;
     if (hitTimer > 0.0f) hitTimer -= dt;
     if (jumpLockout > 0.0f) jumpLockout -= dt;
@@ -195,9 +241,13 @@ void Player::update(float dt) {
     }
 
     // ---- geometry ---------------------------------------------------
-    position.y = C::laneCenterY(lane) + jumpLift;
+    position.y = Constants::getLaneCenterY(laneIndex);
     // A ducking unit is a shorter target (helps the CollisionSystem).
     size.y = baseHeight * lerpf(1.0f, C::DUCK_SCALE_Y, duckAmount);
+    Entity::isJumping = jumping;
+    Entity::isDucking = ducking;
+    Entity::jumpTimer = jumping ? jumpTimer : 0.0f;
+    Entity::duckTimer = ducking ? duckTimer : 0.0f;
 
     updatePose();
 }
@@ -223,7 +273,9 @@ void Player::updatePose() {
     if (hitTimer > 0.0f) Animation::updateHit(model, hitFlinchFraction());             // US-43
 
     // Players always face right, so no mirroring is needed.
-    model.setRootTransform(Transform2D(position, 0.0f, { 1.0f, 1.0f }));
+    model.setRootTransform(Transform2D(
+        { position.x, C::WORLD_HEIGHT - (position.y + baseHeight * 0.5f - jumpLift) },
+        0.0f, { 1.0f, 1.0f }));
 }
 
 // --------------------------------------------------------------------

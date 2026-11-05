@@ -6,6 +6,9 @@
 // ====================================================================
 
 #include "CollisionSystem.h"
+#include "../entities/Player.h"
+#include "../entities/Enemy.h"
+#include "../entities/Projectile.h"
 #include <iostream>
 
 CollisionSystem::CollisionSystem()
@@ -108,7 +111,14 @@ void CollisionSystem::updateCombat(std::vector<Entity*>& players, std::vector<En
                 e->isFighting = true;
 
                 // Player attacks enemy
-                if (p->attackTimer <= 0.0f) {
+                Player* characterPlayer = dynamic_cast<Player*>(p);
+                Enemy* characterEnemy = dynamic_cast<Enemy*>(e);
+                if (characterPlayer) {
+                    if (!characterPlayer->isRanged() && !characterPlayer->isStationary() &&
+                        characterPlayer->claimAttack()) {
+                        e->takeDamage(static_cast<int>(characterPlayer->attackDamage()));
+                    }
+                } else if (p->attackTimer <= 0.0f) {
                     if (p->type != EntityType::PLAYER_DEFENSE) {
                         e->takeDamage(p->attackDamage);
                     }
@@ -116,7 +126,12 @@ void CollisionSystem::updateCombat(std::vector<Entity*>& players, std::vector<En
                 }
 
                 // Enemy attacks player (or Defense player)
-                if (e->attackTimer <= 0.0f) {
+                if (characterEnemy) {
+                    if (!characterEnemy->isRanged() && characterEnemy->claimAttack() &&
+                        !p->shielded) {
+                        p->takeDamage(static_cast<int>(characterEnemy->attackDamage()));
+                    }
+                } else if (e->attackTimer <= 0.0f) {
                     if (!p->shielded) {
                         p->takeDamage(e->attackDamage);
                     }
@@ -135,6 +150,26 @@ void CollisionSystem::updateRangedAttacks(
     // 1. Ranged players shoot at enemies ahead of them in their lane
     for (auto* p : players) {
         if (!p || !p->alive || p->type != EntityType::PLAYER_RANGED) continue;
+        if (Player* characterPlayer = dynamic_cast<Player*>(p)) {
+            if (!characterPlayer->claimAttack()) continue;
+            bool enemyInRange = false;
+            for (const auto* e : enemies) {
+                if (!e || !e->alive || e->laneIndex != p->laneIndex) continue;
+                const float distance = e->position.x - p->position.x;
+                if (distance > 0.0f && distance <= characterPlayer->attackRange()) {
+                    enemyInRange = true;
+                    break;
+                }
+            }
+            if (enemyInRange) {
+                Projectile* projectile = new Projectile();
+                projectile->spawn(characterPlayer->muzzle(), p->laneIndex, Faction::Player,
+                                  UnitType::RangedPlayer, characterPlayer->attackHeight(),
+                                  characterPlayer->facing(), characterPlayer->attackDamage());
+                projectiles.push_back(projectile);
+            }
+            continue;
+        }
         if (p->attackTimer > 0.0f) continue;
 
         bool enemyInLane = false;
@@ -167,6 +202,18 @@ void CollisionSystem::updateRangedAttacks(
     // - Medium Enemy: launches LOW attacks (foot level -> jump over)
     for (auto* e : enemies) {
         if (!e || !e->alive || e->attackTimer > 0.0f) continue;
+
+        if (Enemy* characterEnemy = dynamic_cast<Enemy*>(e)) {
+            if (!characterEnemy->isRanged() || !characterEnemy->claimAttack()) continue;
+            Projectile* projectile = new Projectile();
+            projectile->spawn(characterEnemy->muzzle(), e->laneIndex, Faction::Enemy,
+                              characterEnemy->type == EntityType::ENEMY_EASY
+                                  ? UnitType::EasyEnemy : UnitType::MediumEnemy,
+                              characterEnemy->attackHeight(), characterEnemy->facing(),
+                              characterEnemy->attackDamage());
+            projectiles.push_back(projectile);
+            continue;
+        }
 
         if (e->type == EntityType::ENEMY_EASY || e->type == EntityType::ENEMY_MEDIUM) {
             e->attackTimer = e->attackCooldown;
@@ -212,9 +259,17 @@ void CollisionSystem::updateProjectiles(
             // Check hit against enemies
             for (auto* e : enemies) {
                 if (!e || !e->alive || e->laneIndex != proj->laneIndex) continue;
+                if (Projectile* characterProjectile = dynamic_cast<Projectile*>(proj)) {
+                    if (!characterProjectile->canHit(*e)) continue;
+                }
                 if (projBounds.intersects(e->getBounds())) {
-                    e->takeDamage(proj->attackDamage);
-                    proj->alive = false;
+                    if (Projectile* characterProjectile = dynamic_cast<Projectile*>(proj)) {
+                        e->takeDamage(static_cast<int>(characterProjectile->getDamage()));
+                        characterProjectile->onHit();
+                    } else {
+                        e->takeDamage(proj->attackDamage);
+                        proj->alive = false;
+                    }
                     break;
                 }
             }
@@ -222,6 +277,8 @@ void CollisionSystem::updateProjectiles(
             // Enemy projectile (HIGH or LOW) interacting with players
             for (auto* p : players) {
                 if (!p || !p->alive || p->laneIndex != proj->laneIndex) continue;
+                Projectile* characterProjectile = dynamic_cast<Projectile*>(proj);
+                if (characterProjectile && !characterProjectile->canHit(*p)) continue;
 
                 // Check horizontal overlap
                 float projLeft = proj->position.x - proj->size.x * 0.5f;
@@ -240,8 +297,11 @@ void CollisionSystem::updateProjectiles(
                             break;
                         } else {
                             // Player is standing or jumping -> gets hit!
-                            p->takeDamage(proj->attackDamage);
-                            proj->alive = false;
+                            p->takeDamage(characterProjectile
+                                ? static_cast<int>(characterProjectile->getDamage())
+                                : proj->attackDamage);
+                            if (characterProjectile) characterProjectile->onHit();
+                            else proj->alive = false;
                             break;
                         }
                     } else if (proj->type == EntityType::PROJECTILE_LOW) {
@@ -254,8 +314,11 @@ void CollisionSystem::updateProjectiles(
                             break;
                         } else {
                             // Player is standing or ducking -> gets hit!
-                            p->takeDamage(proj->attackDamage);
-                            proj->alive = false;
+                            p->takeDamage(characterProjectile
+                                ? static_cast<int>(characterProjectile->getDamage())
+                                : proj->attackDamage);
+                            if (characterProjectile) characterProjectile->onHit();
+                            else proj->alive = false;
                             break;
                         }
                     }

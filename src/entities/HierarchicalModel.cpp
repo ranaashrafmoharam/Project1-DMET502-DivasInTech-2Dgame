@@ -138,9 +138,13 @@ void HierarchicalModel::drawPart(Renderer& r, int index) {
 
     // Local = rest pose + animation delta.
     Transform2D local = Transform2D::compose(p.restPose, p.pose);
+    Transform2D screenLocal({ local.translation.x, -local.translation.y },
+                            -local.rotation, local.scale);
 
-    r.pushTransform(local);          // this makes the part's children follow it
+    r.pushTransform(screenLocal);    // this makes the part's children follow it
+    r.pushTransform(Transform2D({ 0.0f, 0.0f }, 0.0f, { 1.0f, -1.0f }));
     drawPartShape(r, p.shape);
+    r.popTransform();
 
     for (int c : children[index]) drawPart(r, c);
 
@@ -148,7 +152,10 @@ void HierarchicalModel::drawPart(Renderer& r, int index) {
 }
 
 void HierarchicalModel::draw(Renderer& r) {
-    r.pushTransform(rootTransform);  // feet position + facing of the whole unit
+    Transform2D screenRoot({ rootTransform.translation.x,
+                             C::WORLD_HEIGHT - rootTransform.translation.y },
+                           -rootTransform.rotation, rootTransform.scale);
+    r.pushTransform(screenRoot);     // feet position + facing of the whole unit
     for (int root : roots) drawPart(r, root);
     r.popTransform();
 }

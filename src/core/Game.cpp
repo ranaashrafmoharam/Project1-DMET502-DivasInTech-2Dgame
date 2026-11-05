@@ -14,6 +14,9 @@
 #include "Game.h"
 #include "Input.h"
 #include "Renderer.h"
+#include "../entities/Player.h"
+#include "../entities/Enemy.h"
+#include "../entities/Projectile.h"
 #include <iostream>
 #include <string>
 
@@ -509,10 +512,23 @@ void Game::renderEntities() {
     }
 
     // 2. Players
-    for (const auto* p : m_players) {
+    for (auto* p : m_players) {
         if (!p || !p->alive) continue;
 
         Bounds b = p->getBounds();
+        if (Player* character = dynamic_cast<Player*>(p)) {
+            if (p->shielded) {
+                renderer.drawBorder(b.x - 4.0f, b.y - 4.0f, b.width + 8.0f, b.height + 8.0f,
+                                    3.0f, glm::vec4(0.0f, 1.0f, 1.0f, 0.9f));
+            }
+            character->draw();
+            const float hpPercent = character->healthFraction();
+            renderer.drawQuad(b.x, b.y - 12.0f, b.width, 8.0f, glm::vec4(0.3f, 0.0f, 0.0f, 0.8f));
+            renderer.drawQuad(b.x, b.y - 12.0f, b.width * hpPercent, 8.0f, glm::vec4(0.1f, 0.9f, 0.1f, 0.9f));
+            renderer.drawBorder(b.x, b.y - 12.0f, b.width, 8.0f, 1.0f, glm::vec4(0.0f, 0.0f, 0.0f, 0.8f));
+            continue;
+        }
+
         glm::vec4 color(0.2f, 0.5f, 0.9f, 1.0f); // Melee (blue)
         std::string unitName = "MELEE";
         if (p->type == EntityType::PLAYER_RANGED) {
@@ -557,10 +573,19 @@ void Game::renderEntities() {
     }
 
     // 3. Enemies
-    for (const auto* e : m_enemies) {
+    for (auto* e : m_enemies) {
         if (!e || !e->alive) continue;
 
         Bounds b = e->getBounds();
+        if (Enemy* character = dynamic_cast<Enemy*>(e)) {
+            character->draw();
+            const float hpPercent = character->healthFraction();
+            renderer.drawQuad(b.x, b.y - 12.0f, b.width, 8.0f, glm::vec4(0.3f, 0.0f, 0.0f, 0.8f));
+            renderer.drawQuad(b.x, b.y - 12.0f, b.width * hpPercent, 8.0f, glm::vec4(0.9f, 0.1f, 0.1f, 0.9f));
+            renderer.drawBorder(b.x, b.y - 12.0f, b.width, 8.0f, 1.0f, glm::vec4(0.0f, 0.0f, 0.0f, 0.8f));
+            continue;
+        }
+
         glm::vec4 color(0.9f, 0.5f, 0.2f, 1.0f); // Easy (orange)
         std::string enemyName = "EASY";
         if (e->type == EntityType::ENEMY_MEDIUM) {
@@ -590,8 +615,12 @@ void Game::renderEntities() {
     }
 
     // 4. Projectiles
-    for (const auto* proj : m_projectiles) {
+    for (auto* proj : m_projectiles) {
         if (!proj || !proj->alive) continue;
+        if (Projectile* characterProjectile = dynamic_cast<Projectile*>(proj)) {
+            characterProjectile->draw();
+            continue;
+        }
         Bounds b = proj->getBounds();
         glm::vec4 color(0.2f, 0.9f, 1.0f, 1.0f);
         std::string pName = "->";

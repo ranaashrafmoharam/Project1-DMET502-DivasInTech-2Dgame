@@ -1,12 +1,22 @@
 # Project 1 Skeleton: 2D Tower Defense (DMET 502)
 
-This is a STRUCTURE-ONLY skeleton. Every source file contains a header comment
-describing its purpose, owner, responsibilities and the function names the team
-should agree on. No game logic is implemented. The team writes the code.
+This project contains the team game implementation. It uses GLFW, GLAD and GLM
+from the provided OpenGL Template for VS Code (Other).
 
-NOTE: main.cpp has no main() yet, so the skeleton does not link until Member 1
-writes the entry point. Merge these files into the course Visual Studio template
-(which already provides GLFW, GLAD and the External/ folder pattern).
+## Build and run (Windows / PowerShell)
+
+Install CMake and a C++17 MinGW toolchain, make sure `gcc`, `g++`, and
+`mingw32-make` are on `PATH`, then configure with the path to the provided
+template folder:
+
+```powershell
+cmake -S . -B build-mingw -G "MinGW Makefiles" -DOPENGL_TEMPLATE_ROOT="C:\path\to\OpenGL Template for VS Code (Other)"
+cmake --build build-mingw --config Release
+.\build-mingw\Project1Dmet502.exe
+```
+
+Run the executable from the project root so it can find `assets/shaders`.
+The game opens at the main menu; click **START GAME** to begin.
 
 ## How the pieces fit together (one frame)
 1. main.cpp creates Game and calls its run loop.

@@ -63,26 +63,33 @@ namespace {
 
 } // anonymous namespace
 
+Projectile::Projectile()
+    : Entity(EntityType::PROJECTILE_PLAYER, 0, 0.0f, 0.0f, 1, 0.0f) {}
+
 void Projectile::spawn(const Vec2& spawnPos, int lane_, Faction faction_,
                        UnitType ownerType_, AttackHeight height_,
                        float direction_, float damage_) {
-    position    = spawnPos;
-    lane        = lane_;
-    faction     = faction_;
+    position    = glm::vec2(spawnPos.x, C::WORLD_HEIGHT - spawnPos.y);
+    laneIndex   = lane_;
+    projectileFaction = faction_;
     ownerType   = ownerType_;
     height      = height_;
     direction   = (direction_ < 0.0f) ? -1.0f : 1.0f;
     damage      = damage_;
     speed       = C::PROJECTILE_SPEED;
+    isFighting  = false;
+    attackDamage = static_cast<int>(damage_);
 
     spin        = 0.0f;
     age         = 0.0f;
 
-    type        = UnitType::None;   // a shot is not a unit
+    type        = (faction_ == Faction::Player) ? EntityType::PROJECTILE_PLAYER
+                  : (height_ == AttackHeight::High) ? EntityType::PROJECTILE_HIGH
+                                                    : EntityType::PROJECTILE_LOW;
     health      = 1.0f;
     maxHealth   = 1.0f;
     alive       = true;
-    size        = { C::PROJECTILE_WIDTH, C::PROJECTILE_WIDTH };
+    size        = glm::vec2(C::PROJECTILE_WIDTH, C::PROJECTILE_WIDTH);
 }
 
 void Projectile::update(float dt) {
@@ -93,14 +100,14 @@ void Projectile::update(float dt) {
     position.x += direction * speed * dt;     // travel along the lane
 
     // Leave the playfield -> the shot is spent.
-    if (position.x < -60.0f || position.x > C::WORLD_WIDTH + 60.0f)
+    if (position.x < C::HOME_BASE_X || position.x > C::WORLD_WIDTH + 60.0f)
         alive = false;
 }
 
 bool Projectile::canHit(const Entity& target) const {
-    return isAlive() && target.isAlive() &&
-           faction != Faction::None && target.faction != Faction::None &&
-           faction != target.faction;
+    return isAlive() && target.isAlive() && projectileFaction != Faction::None &&
+           ((projectileFaction == Faction::Player && target.isEnemy()) ||
+            (projectileFaction == Faction::Enemy && target.isPlayer()));
 }
 
 void Projectile::draw() {
@@ -109,14 +116,14 @@ void Projectile::draw() {
     Renderer& r = getRenderer();
 
     // Draw at the centre of the shot's box.
-    Vec2 centre{ position.x, position.y + size.y * 0.5f };
+    Vec2 centre{ position.x, position.y };
     r.pushTransform(Transform2D(centre, 0.0f, { 1.0f, 1.0f }));
 
     switch (ownerType) {
         case UnitType::RangedPlayer:  drawShuriken(r, spin * direction, size.x); break;
         case UnitType::EasyEnemy:     drawVenomGlob(r, age, size.x);            break;
         case UnitType::MediumEnemy:   drawSonicBlast(r, age, size.x);           break;
-        default:                      r.drawQuad({ 0, 0 }, size, STEEL);        break;
+        default:                      r.drawQuad({ 0, 0 }, { size.x, size.y }, STEEL); break;
     }
 
     r.popTransform();

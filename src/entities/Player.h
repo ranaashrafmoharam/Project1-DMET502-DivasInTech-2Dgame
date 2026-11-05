@@ -36,10 +36,11 @@
 #include "Entity.h"
 #include "HierarchicalModel.h"
 #include "Projectile.h"
+#include "CharacterModels.h"
 
 class Player : public Entity {
 public:
-    Player() = default;
+    Player();
 
     // type must be MeleePlayer / RangedPlayer / DefensePlayer.
     void init(UnitType type, int lane, float spawnX = C::PLAYER_SPAWN_X);
@@ -50,12 +51,13 @@ public:
 
     // ---- combat -----------------------------------------------------
     void takeDamage(float amount);
+    void takeDamage(int amount) override { takeDamage(static_cast<float>(amount)); }
     bool isDead() const { return !isAlive(); }
 
     // True exactly once per swing, on the frame the weapon is in range.
     bool claimAttack();
     bool  isAttacking() const { return attacking; }
-    bool  isRanged()    const { return type == UnitType::RangedPlayer; }
+    bool  isRanged()    const { return unitType == UnitType::RangedPlayer; }
     float attackDamage() const;
     float attackRange()  const;
     AttackHeight attackHeight() const { return AttackHeight::High; }
@@ -65,8 +67,8 @@ public:
     float facing() const { return 1.0f; }   // players always face right
 
     // ---- commands ----------------------------------------------------
-    void jump();                              // US-29 (ignored by Defense, US-31)
-    void duck();                              // US-30 (ignored by Defense, US-31)
+    void jump() override;                     // US-29 (ignored by Defense, US-31)
+    void duck() override;                     // US-30 (ignored by Defense, US-31)
     bool isJumping()   const { return jumping; }
     bool isDucking()   const { return ducking; }
     float jumpHeight() const { return jumpLift; }
@@ -76,11 +78,13 @@ public:
     bool isShielded()  const { return shielded; }
     void setBlocked(bool b)  { blocked  = b; }   // stops advancing in a fight
     bool isBlocked()   const { return blocked; }
-    bool isStationary() const { return type == UnitType::DefensePlayer; }
+    bool isStationary() const { return unitType == UnitType::DefensePlayer; }
+    Bounds getBounds() const override;
 
     HierarchicalModel model;
 
 private:
+    UnitType unitType = UnitType::None;
     void  startSwing();
     void  updatePose();
     float hitFlinchFraction() const { return hitTimer > 0.0f ? hitTimer / HIT_FLINCH_TIME : 0.0f; }
@@ -107,7 +111,6 @@ private:
     bool  attackUsed = false;   // true once this swing has dealt its hit
     bool  jumping    = false;
     bool  ducking    = false;
-    bool  shielded   = false;
     bool  blocked    = false;
 
     float jumpLift   = 0.0f;    // current height of the jump arc

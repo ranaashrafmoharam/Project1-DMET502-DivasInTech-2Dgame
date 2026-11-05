@@ -8,6 +8,8 @@
 #include "Renderer.h"
 #include "Constants.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 
 Renderer& Renderer::getInstance() {
@@ -21,6 +23,8 @@ Renderer::Renderer()
     , m_quadVBO(0)
     , m_quadEBO(0)
     , m_currentTint(1.0f, 1.0f, 1.0f, 1.0f)
+    , m_tintBase(1.0f, 1.0f, 1.0f, 1.0f)
+    , m_tintAmount(1.0f)
     , m_currentGrayscale(false)
 {
     m_transformStack.push(glm::mat4(1.0f));
@@ -110,12 +114,33 @@ void Renderer::setProjection(float width, float height) {
 
 void Renderer::pushTransform() {
     m_transformStack.push(m_transformStack.top());
+    m_characterTransformStack.push_back(m_characterTransformStack.back());
+}
+
+void Renderer::pushTransform(const Transform2D& transform) {
+    pushTransform();
+    m_characterTransformStack.back() =
+        Transform2D::compose(m_characterTransformStack.back(), transform);
+    glm::mat4 matrix(1.0f);
+    matrix = glm::translate(matrix, glm::vec3(transform.translation.x, transform.translation.y, 0.0f));
+    matrix = glm::rotate(matrix, transform.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    matrix = glm::scale(matrix, glm::vec3(transform.scale.x, transform.scale.y, 1.0f));
+    applyTransform(matrix);
 }
 
 void Renderer::popTransform() {
     if (m_transformStack.size() > 1) {
         m_transformStack.pop();
     }
+    if (m_characterTransformStack.size() > 1) {
+        m_characterTransformStack.pop_back();
+    }
+}
+
+void Renderer::beginFrame() {
+    resetTransform();
+    m_characterTransformStack.assign(1, Transform2D{});
+    resetShaderState();
 }
 
 void Renderer::applyTransform(const glm::mat4& transform) {
@@ -134,7 +159,19 @@ const glm::mat4& Renderer::getCurrentTransform() const {
 }
 
 void Renderer::setTint(const glm::vec4& tint) {
-    m_currentTint = tint;
+    m_tintBase = tint;
+    m_currentTint = glm::mix(glm::vec4(1.0f), m_tintBase, m_tintAmount);
+}
+
+void Renderer::setTint(const Vec4& tint) {
+    m_characterTint = tint;
+    setTint(glm::vec4(tint.x, tint.y, tint.z, tint.w));
+}
+
+void Renderer::setTintAmount(float amount) {
+    m_characterTintAmount = clampf(amount, 0.0f, 1.0f);
+    m_tintAmount = m_characterTintAmount;
+    m_currentTint = glm::mix(glm::vec4(1.0f), m_tintBase, m_tintAmount);
 }
 
 void Renderer::setGrayscale(bool enabled) {
@@ -143,6 +180,10 @@ void Renderer::setGrayscale(bool enabled) {
 
 void Renderer::resetShaderState() {
     m_currentTint = glm::vec4(1.0f);
+    m_tintBase = glm::vec4(1.0f);
+    m_tintAmount = 1.0f;
+    m_characterTint = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+    m_characterTintAmount = 0.0f;
     m_currentGrayscale = false;
 }
 
@@ -174,6 +215,70 @@ void Renderer::drawQuad(float x, float y, float width, float height, const glm::
 
 void Renderer::drawQuadCentered(float x, float y, float width, float height, const glm::vec4& color, unsigned int textureID) {
     drawQuad(x - width * 0.5f, y - height * 0.5f, width, height, color, textureID);
+}
+
+void Renderer::drawQuad(const Vec2& center, const Vec2& size, const Vec4& color, float rotation) {
+    pushTransform(Transform2D(center, rotation));
+    drawQuad(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y,
+             glm::vec4(color.x, color.y, color.z, color.w));
+    popTransform();
+}
+
+void Renderer::drawCircle(const Vec2& center, float radius, const Vec4& color, int segments) {
+    const int strips = std::max(8, std::min(segments, 48));
+    for (int i = 0; i < strips; ++i) {
+        const float y0 = -radius + (2.0f * radius * static_cast<float>(i)) / strips;
+        const float y1 = -radius + (2.0f * radius * static_cast<float>(i + 1)) / strips;
+        const float middle = (y0 + y1) * 0.5f;
+        const float halfWidth = std::sqrt(std::max(0.0f, radius * radius - middle * middle));
+        drawQuad({ center.x, center.y + middle }, { halfWidth * 2.0f, y1 - y0 }, color);
+    }
+}
+
+void Renderer::drawTriangle(const Vec2& a, const Vec2& b, const Vec2& c, const Vec4& color) {
+    const Vec2 points[] = { a, b, c };
+    const float minY = std::min(a.y, std::min(b.y, c.y));
+    const float maxY = std::max(a.y, std::max(b.y, c.y));
+    const int strips = 16;
+    for (int i = 0; i < strips; ++i) {
+        const float y0 = minY + (maxY - minY) * static_cast<float>(i) / strips;
+        const float y1 = minY + (maxY - minY) * static_cast<float>(i + 1) / strips;
+        const float middle = (y0 + y1) * 0.5f;
+        float intersections[3];
+        int count = 0;
+        for (int edge = 0; edge < 3; ++edge) {
+            const Vec2& p0 = points[edge];
+            const Vec2& p1 = points[(edge + 1) % 3];
+            if ((p0.y <= middle && p1.y > middle) || (p1.y <= middle && p0.y > middle)) {
+                const float t = (middle - p0.y) / (p1.y - p0.y);
+                intersections[count++] = p0.x + (p1.x - p0.x) * t;
+            }
+        }
+        if (count < 2) continue;
+        const float left = std::min(intersections[0], intersections[1]);
+        const float right = std::max(intersections[0], intersections[1]);
+        drawQuad({ (left + right) * 0.5f, (y0 + y1) * 0.5f },
+                 { right - left, y1 - y0 }, color);
+    }
+}
+
+void Renderer::drawTrapezoid(const Vec2& center, const Vec2& size, float topWidthScale,
+                             const Vec4& color, float rotation) {
+    const float scale = glm::clamp(topWidthScale, 0.0f, 1.0f);
+    const int strips = 16;
+    pushTransform();
+    glm::mat4 matrix(1.0f);
+    matrix = glm::translate(matrix, glm::vec3(center.x, center.y, 0.0f));
+    matrix = glm::rotate(matrix, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    applyTransform(matrix);
+    for (int i = 0; i < strips; ++i) {
+        const float t = (static_cast<float>(i) + 0.5f) / strips;
+        const float width = size.x * (1.0f + (scale - 1.0f) * t);
+        drawQuad(-width * 0.5f, -size.y * 0.5f + size.y * i / strips,
+                 width, size.y / strips,
+                 glm::vec4(color.x, color.y, color.z, color.w));
+    }
+    popTransform();
 }
 
 void Renderer::drawBorder(float x, float y, float width, float height, float thickness, const glm::vec4& color) {

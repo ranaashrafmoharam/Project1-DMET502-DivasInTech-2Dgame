@@ -6,6 +6,7 @@
 // ====================================================================
 
 #include "PlayerPlacement.h"
+#include "../entities/Player.h"
 #include <iostream>
 
 int PlayerPlacement::getCardCost(CardType type) {
@@ -35,51 +36,19 @@ Entity* PlayerPlacement::tryPlace(CardType cardType, int lane, int& currentCoins
     // Deduct cost
     currentCoins -= cost;
 
-    float spawnX = Constants::PLAYER_SPAWN_X;
-    float spawnY = Constants::getLaneCenterY(lane);
-
-    Entity* newPlayer = nullptr;
-
+    Player* newPlayer = new Player();
     switch (cardType) {
-        case CardType::MELEE: {
-            newPlayer = new Entity(
-                EntityType::PLAYER_MELEE,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_PLAYER_MELEE,
-                Constants::SPEED_PLAYER_MELEE
-            );
-            newPlayer->attackDamage = Constants::DMG_PLAYER_MELEE;
-            newPlayer->attackCooldown = Constants::ATTACK_COOLDOWN_MELEE;
+        case CardType::MELEE:
+            newPlayer->init(UnitType::MeleePlayer, lane, Constants::PLAYER_SPAWN_X);
             break;
-        }
-        case CardType::RANGED: {
-            newPlayer = new Entity(
-                EntityType::PLAYER_RANGED,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_PLAYER_RANGED,
-                Constants::SPEED_PLAYER_RANGED
-            );
-            newPlayer->attackDamage = Constants::DMG_PLAYER_RANGED;
-            newPlayer->attackCooldown = Constants::ATTACK_COOLDOWN_RANGED;
+        case CardType::RANGED:
+            newPlayer->init(UnitType::RangedPlayer, lane, Constants::PLAYER_SPAWN_X);
             break;
-        }
-        case CardType::DEFENSE: {
-            newPlayer = new Entity(
-                EntityType::PLAYER_DEFENSE,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_PLAYER_DEFENSE,
-                Constants::SPEED_PLAYER_DEFENSE // 0.0f
-            );
-            newPlayer->attackDamage = Constants::DMG_PLAYER_DEFENSE; // 0
+        case CardType::DEFENSE:
+            newPlayer->init(UnitType::DefensePlayer, lane, Constants::PLAYER_SPAWN_X);
             break;
-        }
         default:
+            delete newPlayer;
             break;
     }
 

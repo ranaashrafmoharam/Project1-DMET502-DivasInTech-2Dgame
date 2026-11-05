@@ -22,6 +22,30 @@
 #include <algorithm>
 #include "../core/Constants.h"
 
+enum class UnitType {
+    None,
+    MeleePlayer,
+    RangedPlayer,
+    DefensePlayer,
+    EasyEnemy,
+    MediumEnemy,
+    HardEnemy
+};
+
+enum class Faction { None, Player, Enemy };
+
+inline const char* unitTypeName(UnitType type) {
+    switch (type) {
+        case UnitType::MeleePlayer: return "Melee Player";
+        case UnitType::RangedPlayer: return "Ranged Player";
+        case UnitType::DefensePlayer: return "Defense Player";
+        case UnitType::EasyEnemy: return "Easy Enemy";
+        case UnitType::MediumEnemy: return "Medium Enemy";
+        case UnitType::HardEnemy: return "Hard Enemy";
+        default: return "None";
+    }
+}
+
 enum class EntityType {
     PLAYER_MELEE,
     PLAYER_RANGED,
@@ -75,6 +99,10 @@ public:
     int attackDamage;
 
 public:
+    Entity()
+        : Entity(EntityType::PLAYER_MELEE, 0, Constants::PLAYER_SPAWN_X,
+                 Constants::getLaneCenterY(0), 1, 0.0f) {}
+
     Entity(EntityType t, int lane, float x, float y, int hp, float spd)
         : position(x, y)
         , size(Constants::UNIT_WIDTH, Constants::UNIT_HEIGHT)
@@ -134,6 +162,11 @@ public:
 
     virtual bool isDead() const {
         return !alive || health <= 0;
+    }
+
+    bool isAlive() const { return alive && health > 0; }
+    float healthFraction() const {
+        return maxHealth > 0 ? static_cast<float>(health) / static_cast<float>(maxHealth) : 0.0f;
     }
 
     virtual Bounds getBounds() const {

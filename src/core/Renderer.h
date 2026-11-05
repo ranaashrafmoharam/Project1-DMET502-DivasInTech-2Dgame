@@ -26,9 +26,13 @@
 #include <vector>
 #include <stack>
 #include "Shader.h"
+#include "Math.h"
+#include "Constants.h"
 
 class Renderer {
 public:
+    Renderer();
+    virtual ~Renderer();
     static Renderer& getInstance();
 
     bool init();
@@ -39,15 +43,24 @@ public:
     const glm::mat4& getProjection() const { return m_projection; }
 
     // Transform stack (used by hierarchical models, M2-01)
+    void beginFrame();
+    void setDefaultOrtho() { setProjection(static_cast<float>(Constants::SCREEN_WIDTH), static_cast<float>(Constants::SCREEN_HEIGHT)); }
     void pushTransform();
+    void pushTransform(const Transform2D& transform);
     void popTransform();
+    const Transform2D& top() const { return m_characterTransformStack.back(); }
     void applyTransform(const glm::mat4& transform);
     void resetTransform();
     const glm::mat4& getCurrentTransform() const;
 
     // Shader states
     void setTint(const glm::vec4& tint);
+    void setTint(const Vec4& tint);
+    void setTintAmount(float amount);
+    const Vec4& getTint() const { return m_characterTint; }
+    float getTintAmount() const { return m_characterTintAmount; }
     void setGrayscale(bool enabled);
+    bool isGrayscale() const { return m_currentGrayscale; }
     void resetShaderState();
 
     // Drawing helpers
@@ -55,6 +68,11 @@ public:
     void drawQuad(float x, float y, float width, float height, const glm::vec4& color, unsigned int textureID = 0);
     // Centered at x, y
     void drawQuadCentered(float x, float y, float width, float height, const glm::vec4& color, unsigned int textureID = 0);
+    virtual void drawQuad(const Vec2& center, const Vec2& size, const Vec4& color, float rotation = 0.0f);
+    virtual void drawCircle(const Vec2& center, float radius, const Vec4& color, int segments = 20);
+    virtual void drawTriangle(const Vec2& a, const Vec2& b, const Vec2& c, const Vec4& color);
+    virtual void drawTrapezoid(const Vec2& center, const Vec2& size, float topWidthScale,
+                               const Vec4& color, float rotation = 0.0f);
     // Draw hollow/bordered rectangle
     void drawBorder(float x, float y, float width, float height, float thickness, const glm::vec4& color);
 
@@ -66,9 +84,6 @@ public:
     Shader& getShader() { return m_shader; }
 
 private:
-    Renderer();
-    ~Renderer();
-
     Shader m_shader;
     glm::mat4 m_projection;
     std::stack<glm::mat4> m_transformStack;
@@ -78,7 +93,21 @@ private:
     unsigned int m_quadEBO;
 
     glm::vec4 m_currentTint;
+    glm::vec4 m_tintBase;
+    float m_tintAmount;
+    Vec4 m_characterTint{ 1.0f, 1.0f, 1.0f, 1.0f };
+    float m_characterTintAmount = 0.0f;
+    std::vector<Transform2D> m_characterTransformStack{ Transform2D{} };
     bool m_currentGrayscale;
 
     void setupQuadBuffers();
 };
+
+inline Renderer*& rendererSlot() {
+    static Renderer* renderer = nullptr;
+    return renderer;
+}
+inline Renderer& getRenderer() {
+    return rendererSlot() ? *rendererSlot() : Renderer::getInstance();
+}
+inline void setRenderer(Renderer* renderer) { rendererSlot() = renderer; }

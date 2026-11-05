@@ -32,10 +32,11 @@
 #include "Entity.h"
 #include "HierarchicalModel.h"
 #include "Projectile.h"      // AttackHeight
+#include "CharacterModels.h"
 
 class Enemy : public Entity {
 public:
-    Enemy() = default;
+    Enemy();
 
     // type must be EasyEnemy / MediumEnemy / HardEnemy.
     void init(UnitType type, int lane, float spawnX = C::ENEMY_SPAWN_X);
@@ -46,6 +47,7 @@ public:
 
     // ---- combat -----------------------------------------------------
     void takeDamage(float amount);
+    void takeDamage(int amount) override { takeDamage(static_cast<float>(amount)); }
     bool isDead() const { return !isAlive(); }
 
     // True exactly once per swing, on the frame the attack connects.
@@ -70,6 +72,7 @@ public:
     // Returns true once, immediately after the enemy is defeated.
     bool consumeOrbDrop();
     int  orbValue() const { return C::ORB_VALUE; }
+    Bounds getBounds() const override;
 
     // Movement can be halted by the CollisionSystem during a fight.
     void setBlocked(bool b) { blocked = b; }
@@ -78,6 +81,7 @@ public:
     HierarchicalModel model;
 
 private:
+    UnitType unitType = UnitType::None;
     void startAttack();
     void updatePose();
 

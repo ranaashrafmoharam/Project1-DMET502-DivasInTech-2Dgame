@@ -19,19 +19,36 @@
 
 #include <cmath>
 
+namespace {
+EntityType entityTypeFor(UnitType type) {
+    switch (type) {
+        case UnitType::EasyEnemy: return EntityType::ENEMY_EASY;
+        case UnitType::MediumEnemy: return EntityType::ENEMY_MEDIUM;
+        case UnitType::HardEnemy: return EntityType::ENEMY_HARD;
+        default: return EntityType::ENEMY_EASY;
+    }
+}
+}
+
+Enemy::Enemy()
+    : Entity(EntityType::ENEMY_EASY, 0, C::ENEMY_SPAWN_X,
+             Constants::getLaneCenterY(0), static_cast<int>(C::ENEMY_EASY_HEALTH), C::ENEMY_SPEED) {}
+
 // --------------------------------------------------------------------
 // Build the unit: pick the model, then copy the stats for its type.
 // --------------------------------------------------------------------
 void Enemy::init(UnitType t, int lane_, float spawnX) {
-    type     = t;
-    faction  = Faction::Enemy;
-    lane     = lane_;
+    unitType = t;
+    type     = entityTypeFor(t);
+    laneIndex = lane_;
     alive    = true;
-    position = { spawnX, C::laneCenterY(lane_) };
+    isFighting = false;
+    position = glm::vec2(spawnX, Constants::getLaneCenterY(lane_));
 
     model      = CharacterModels::buildForType(t);
-    size       = model.size();
-    baseHeight = size.y;
+    const Vec2 modelSize = model.size();
+    size       = glm::vec2(modelSize.x, modelSize.y);
+    baseHeight = modelSize.y;
 
     switch (t) {
         case UnitType::EasyEnemy:                          // US-35 upper ranged
@@ -55,6 +72,17 @@ void Enemy::init(UnitType t, int lane_, float spawnX) {
     }
 
     health = maxHealth;
+    cooldown = 0.0f;
+    swingTimer = 0.0f;
+    hitTimer = 0.0f;
+    animTime = 0.0f;
+    attacking = false;
+    attackUsed = false;
+    blocked = false;
+    orbPending = false;
+    speed = moveSpeed;
+    Entity::attackCooldown = attackCooldown;
+    Entity::attackDamage = static_cast<int>(Enemy::attackDamage());
 
     // Lay the model out straight away so muzzle() / the hitbox are valid.
     updatePose();
@@ -64,18 +92,18 @@ void Enemy::init(UnitType t, int lane_, float spawnX) {
 // Combat queries
 // --------------------------------------------------------------------
 bool Enemy::isRanged() const {
-    return type == UnitType::EasyEnemy || type == UnitType::MediumEnemy;
+    return unitType == UnitType::EasyEnemy || unitType == UnitType::MediumEnemy;
 }
 
 AttackHeight Enemy::attackHeight() const {
     // Easy (Venomari) spits from above  -> the player must duck  (US-35)
     // Medium (Hypnobrai) sweeps low     -> the player must jump  (US-36)
     // Hard is melee, so the tag is unused.
-    return (type == UnitType::MediumEnemy) ? AttackHeight::Low : AttackHeight::High;
+    return (unitType == UnitType::MediumEnemy) ? AttackHeight::Low : AttackHeight::High;
 }
 
 float Enemy::attackDamage() const {
-    switch (type) {
+    switch (unitType) {
         case UnitType::EasyEnemy:   return C::ENEMY_EASY_DAMAGE;     // 1
         case UnitType::MediumEnemy: return C::ENEMY_MEDIUM_DAMAGE;   // 1
         case UnitType::HardEnemy:   return C::ENEMY_HARD_DAMAGE;     // 2
@@ -104,7 +132,7 @@ Vec2 Enemy::muzzle() const {
     else if (model.hasPart("staffTip")) socketX = model.partWorldPosition("staffTip").x;
     else if (model.hasPart("fistR"))    socketX = model.partWorldPosition("fistR").x;
 
-    float feetY = C::laneCenterY(lane);
+    float feetY = C::laneCenterY(laneIndex);
     float shotY = (attackHeight() == AttackHeight::High)
                     ? feetY + baseHeight * 0.72f      // head height: duck (US-35)
                     : feetY + 6.0f;                   // ankle height: jump (US-36)
@@ -122,7 +150,7 @@ void Enemy::startAttack() {
     cooldown   = attackCooldown;
 
     // Attack sounds (US-56): each tribe sounds different.
-    switch (type) {
+    switch (unitType) {
         case UnitType::EasyEnemy:   getAudio().playSound(SoundId::VenomSpit);   break;
         case UnitType::MediumEnemy: getAudio().playSound(SoundId::SonicBlast);  break;
         case UnitType::HardEnemy:   getAudio().playSound(SoundId::MeleeCrush);  break;
@@ -154,12 +182,18 @@ bool Enemy::consumeOrbDrop() {
     return true;
 }
 
+Bounds Enemy::getBounds() const {
+    return { position.x - size.x * 0.5f, position.y - size.y * 0.5f,
+             size.x, size.y };
+}
+
 // --------------------------------------------------------------------
 // Per-frame update
 // --------------------------------------------------------------------
 void Enemy::update(float dt) {
     if (!isAlive()) return;
 
+    blocked = isFighting;
     animTime += dt;
     if (cooldown > 0.0f) cooldown -= dt;
     if (hitTimer > 0.0f) hitTimer -= dt;
@@ -177,7 +211,7 @@ void Enemy::update(float dt) {
     // ---- movement (left, toward the home base) ----------------------
     if (!blocked && position.x > C::HOME_BASE_X) position.x -= moveSpeed * dt;
 
-    position.y = C::laneCenterY(lane);
+    position.y = Constants::getLaneCenterY(laneIndex);
 
     updatePose();
 }
@@ -193,14 +227,16 @@ void Enemy::updatePose() {
     // Easy / Medium slither (walk cycle drives their tail + coil);
     // Hard runs with a wider stride (US-37).
     if (blocked) Animation::updateIdle(model, animTime);
-    else if (type == UnitType::HardEnemy) Animation::updateRun(model, animTime);
+    else if (unitType == UnitType::HardEnemy) Animation::updateRun(model, animTime);
     else                                  Animation::updateWalk(model, animTime);
 
     if (attacking) Animation::updateAttack(model, animTime, attackPhase, isRanged());
     if (hitTimer > 0.0f) Animation::updateHit(model, hitTimer / HIT_FLINCH_TIME);
 
     // Enemies face left, so the whole model is mirrored in x.
-    model.setRootTransform(Transform2D(position, 0.0f, { -1.0f, 1.0f }));
+    model.setRootTransform(Transform2D(
+        { position.x, C::WORLD_HEIGHT - (position.y + baseHeight * 0.5f) },
+        0.0f, { -1.0f, 1.0f }));
 }
 
 // --------------------------------------------------------------------

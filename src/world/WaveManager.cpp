@@ -6,6 +6,7 @@
 // ====================================================================
 
 #include "WaveManager.h"
+#include "../entities/Enemy.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -56,55 +57,23 @@ void WaveManager::setupWave(int waveNumber) {
 
 Entity* WaveManager::spawnEnemy(EntityType type) {
     int lane = std::rand() % Constants::LANE_COUNT;
-    float spawnX = Constants::ENEMY_SPAWN_X;
-    float spawnY = Constants::getLaneCenterY(lane);
-
-    Entity* enemy = nullptr;
-
+    UnitType unitType = UnitType::EasyEnemy;
     switch (type) {
-        case EntityType::ENEMY_EASY: {
-            enemy = new Entity(
-                EntityType::ENEMY_EASY,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_ENEMY_EASY,
-                Constants::SPEED_ENEMY_EASY
-            );
-            enemy->attackDamage = Constants::DMG_ENEMY_EASY;
-            enemy->attackCooldown = Constants::ATTACK_COOLDOWN_RANGED;
+        case EntityType::ENEMY_EASY:
+            unitType = UnitType::EasyEnemy;
             break;
-        }
-        case EntityType::ENEMY_MEDIUM: {
-            enemy = new Entity(
-                EntityType::ENEMY_MEDIUM,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_ENEMY_MEDIUM,
-                Constants::SPEED_ENEMY_MEDIUM
-            );
-            enemy->attackDamage = Constants::DMG_ENEMY_MEDIUM;
-            enemy->attackCooldown = Constants::ATTACK_COOLDOWN_RANGED;
+        case EntityType::ENEMY_MEDIUM:
+            unitType = UnitType::MediumEnemy;
             break;
-        }
-        case EntityType::ENEMY_HARD: {
-            enemy = new Entity(
-                EntityType::ENEMY_HARD,
-                lane,
-                spawnX,
-                spawnY,
-                Constants::HP_ENEMY_HARD,
-                Constants::SPEED_ENEMY_HARD // Fast!
-            );
-            enemy->attackDamage = Constants::DMG_ENEMY_HARD; // 2 damage
-            enemy->attackCooldown = Constants::ATTACK_COOLDOWN_MELEE;
+        case EntityType::ENEMY_HARD:
+            unitType = UnitType::HardEnemy;
             break;
-        }
         default:
-            break;
+            return nullptr;
     }
 
+    Enemy* enemy = new Enemy();
+    enemy->init(unitType, lane, Constants::ENEMY_SPAWN_X);
     return enemy;
 }
 

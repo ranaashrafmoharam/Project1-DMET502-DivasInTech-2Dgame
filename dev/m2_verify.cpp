@@ -357,7 +357,7 @@ int main() {
         Player teammate; teammate.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X + 40.0f);
         Enemy target; target.init(UnitType::EasyEnemy, 0, C::ENEMY_SPAWN_X);
         Projectile shot;
-        shot.spawn(ranged.muzzle(), ranged.lane, Faction::Player, ranged.type,
+        shot.spawn(ranged.muzzle(), ranged.laneIndex, Faction::Player, UnitType::RangedPlayer,
                    ranged.attackHeight(), ranged.facing(), ranged.attackDamage());
         check(ranged.attackHeight() == AttackHeight::High, "Ranged player attack has a HIGH dodge tag");
         check(!shot.canHit(ranged) && !shot.canHit(teammate),
@@ -420,7 +420,7 @@ int main() {
         float x0 = shot.position.x;
         run(shot, 0.5f);
         check(shot.position.x > x0 + 100.0f, "player shot travels to the right (US-26)");
-        check(shot.getBounds().w > 0.0f && shot.getBounds().h > 0.0f, "shot exposes a hitbox (US-42)");
+        check(shot.getBounds().width > 0.0f && shot.getBounds().height > 0.0f, "shot exposes a hitbox (US-42)");
         Player teammate; teammate.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
         Enemy target; target.init(UnitType::EasyEnemy, 0, C::ENEMY_SPAWN_X);
         check(!shot.canHit(teammate), "a Ranged Player shot cannot harm another player");
@@ -603,7 +603,7 @@ int main() {
         run(easy, 0.4f); run(med, 0.7f); run(hard, 0.3f);
 
         Projectile shot;
-        shot.spawn(zane.muzzle(), zane.lane, Faction::Player, UnitType::RangedPlayer,
+        shot.spawn(zane.muzzle(), zane.laneIndex, Faction::Player, UnitType::RangedPlayer,
                    AttackHeight::High, +1.0f, 1.0f);
         run(shot, 0.25f);
 

@@ -126,4 +126,44 @@ namespace Constants {
     constexpr int WAVE_3_COUNT = 10; // Wave 3: at least 10 mixed
     constexpr float ENEMY_SPAWN_INTERVAL = 3.2f; // Seconds between spawns
 
+    // Character-system aliases used by Member 2's models and combat code.
+    constexpr float WORLD_WIDTH = static_cast<float>(SCREEN_WIDTH);
+    constexpr float WORLD_HEIGHT = static_cast<float>(SCREEN_HEIGHT);
+    constexpr float CHARACTER_WIDTH = 42.0f;
+    constexpr float CHARACTER_HEIGHT = 74.0f;
+    constexpr float PLAYER_MAX_X = static_cast<float>(SCREEN_WIDTH) - CHARACTER_WIDTH * 0.5f;
+    constexpr float PLAYER_SPEED = SPEED_PLAYER_MELEE;
+    constexpr float DEFENSE_SPEED = SPEED_PLAYER_DEFENSE;
+    constexpr float ENEMY_SPEED = SPEED_ENEMY_EASY;
+    constexpr float HARD_ENEMY_SPEED = SPEED_ENEMY_HARD;
+    constexpr float MELEE_HEALTH = static_cast<float>(HP_PLAYER_MELEE);
+    constexpr float RANGED_HEALTH = static_cast<float>(HP_PLAYER_RANGED);
+    constexpr float DEFENSE_HEALTH = static_cast<float>(HP_PLAYER_DEFENSE);
+    constexpr float ENEMY_EASY_HEALTH = static_cast<float>(HP_ENEMY_EASY);
+    constexpr float ENEMY_MEDIUM_HEALTH = static_cast<float>(HP_ENEMY_MEDIUM);
+    constexpr float ENEMY_HARD_HEALTH = static_cast<float>(HP_ENEMY_HARD);
+    constexpr float PLAYER_DAMAGE = static_cast<float>(DMG_PLAYER_MELEE);
+    constexpr float DEFENSE_DAMAGE = static_cast<float>(DMG_PLAYER_DEFENSE);
+    constexpr float ENEMY_EASY_DAMAGE = static_cast<float>(DMG_ENEMY_EASY);
+    constexpr float ENEMY_MEDIUM_DAMAGE = static_cast<float>(DMG_ENEMY_MEDIUM);
+    constexpr float ENEMY_HARD_DAMAGE = static_cast<float>(DMG_ENEMY_HARD);
+    constexpr float PLAYER_ATTACK_COOLDOWN = ATTACK_COOLDOWN_MELEE;
+    constexpr float ENEMY_ATTACK_COOLDOWN = ATTACK_COOLDOWN_RANGED;
+    constexpr float HARD_ENEMY_COOLDOWN = ATTACK_COOLDOWN_MELEE;
+    constexpr float ATTACK_ANIM_TIME = 0.35f;
+    constexpr float MELEE_RANGE = 62.0f;
+    constexpr float RANGED_RANGE = RANGED_ATTACK_RANGE;
+    constexpr float ENEMY_RANGED_RANGE = RANGED_ATTACK_RANGE;
+    constexpr float ENEMY_MELEE_RANGE = 58.0f;
+    constexpr float PROJECTILE_SPEED = SPEED_PROJECTILE;
+    constexpr float JUMP_HEIGHT = 78.0f;
+    constexpr float DUCK_SCALE_Y = 0.55f;
+    constexpr int ORB_VALUE = COIN_DROP_VALUE;
+
+    inline float laneCenterY(int lane) {
+        return static_cast<float>(SCREEN_HEIGHT) - getLaneCenterY(lane);
+    }
+
 } // namespace Constants
+
+namespace C = Constants;
