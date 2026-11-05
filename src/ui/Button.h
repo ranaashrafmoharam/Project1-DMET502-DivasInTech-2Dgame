@@ -16,6 +16,7 @@ public:
 
     void setBounds(float x, float y, float w, float h);
     void setLabel(const std::string& label);
+    void setAccentColor(const glm::vec4& color) { m_accentColor = color; }
 
     void update(glm::vec2 mousePos, bool leftClicked);
     void draw() const;
@@ -30,6 +31,7 @@ private:
     float m_w = 0.0f;
     float m_h = 0.0f;
     float m_fontScale = 3.0f;
+    glm::vec4 m_accentColor = glm::vec4(0.78f, 0.62f, 0.20f, 1.0f);
 
     bool m_hovered = false;
     bool m_clicked = false;

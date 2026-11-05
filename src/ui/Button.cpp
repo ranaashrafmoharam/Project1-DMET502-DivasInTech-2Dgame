@@ -25,27 +25,27 @@ void Button::draw() const {
 
     // Pokemon style button box:
     // Outer shadow
-    ren.drawRect(m_x + 4, m_y - 4, m_w, m_h, glm::vec4(0.04f, 0.06f, 0.10f, 0.7f));
+    ren.drawRect(m_x + 4, m_y - 4, m_w, m_h, glm::vec4(0.03f, 0.03f, 0.07f, 0.9f));
 
     // Outer border (accentuates when hovered)
-    glm::vec4 borderColor = m_hovered ? glm::vec4(0.95f, 0.80f, 0.20f, 1.0f)   // Golden highlight
-                                      : glm::vec4(0.25f, 0.32f, 0.45f, 1.0f);  // Slate border
+    glm::vec4 borderColor = m_hovered ? m_accentColor + glm::vec4(0.12f, 0.12f, 0.12f, 0.0f)
+                                      : m_accentColor;
     ren.drawRect(m_x - 3, m_y - 3, m_w + 6, m_h + 6, borderColor);
 
     // Inner background
-    glm::vec4 bgColor = m_hovered ? glm::vec4(0.18f, 0.26f, 0.40f, 1.0f)
-                                  : glm::vec4(0.09f, 0.13f, 0.20f, 1.0f);
+    glm::vec4 bgColor = m_hovered ? glm::vec4(0.16f, 0.16f, 0.26f, 1.0f)
+                                  : glm::vec4(0.07f, 0.08f, 0.14f, 1.0f);
     ren.drawRect(m_x, m_y, m_w, m_h, bgColor);
 
     // Inner thin border
     ren.drawRectOutline(m_x + 3, m_y + 3, m_w - 6, m_h - 6, 2.0f, 
-                        m_hovered ? glm::vec4(0.40f, 0.60f, 0.85f, 0.9f)
-                                  : glm::vec4(0.16f, 0.22f, 0.32f, 0.8f));
+                        m_hovered ? m_accentColor
+                                  : glm::vec4(0.32f, 0.38f, 0.50f, 1.0f));
 
     // Pokemon style cursor arrow '>' on hover
     if (m_hovered) {
         tr.drawTextWithShadow(">", m_x + 14.0f, m_y + (m_h - tr.getTextHeight(m_fontScale)) * 0.5f,
-                              m_fontScale, glm::vec4(1.0f, 0.85f, 0.25f, 1.0f));
+                              m_fontScale, m_accentColor);
     }
 
     // Centered label with shadow
