@@ -13,7 +13,8 @@ set(TEMPLATE_EXTERNAL "${OPENGL_TEMPLATE_ROOT}/external")
 foreach(required_path
         "${TEMPLATE_EXTERNAL}/glfw-3.5.1/CMakeLists.txt"
         "${TEMPLATE_EXTERNAL}/glm/CMakeLists.txt"
-        "${TEMPLATE_EXTERNAL}/glad/include/glad/gl.h")
+        "${CMAKE_CURRENT_SOURCE_DIR}/External/glad/include/glad/glad.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/External/glad/src/glad.c")
     if (NOT EXISTS "${required_path}")
         message(FATAL_ERROR "Required template dependency is missing: ${required_path}")
     endif()
@@ -23,9 +24,23 @@ add_subdirectory("${TEMPLATE_EXTERNAL}/glfw-3.5.1" "${CMAKE_BINARY_DIR}/glfw")
 add_subdirectory("${TEMPLATE_EXTERNAL}/glm" "${CMAKE_BINARY_DIR}/glm")
 find_package(OpenGL REQUIRED)
 
-file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-add_executable(Project1Dmet502 ${GAME_SOURCES})
-target_include_directories(Project1Dmet502 PRIVATE
+file(GLOB_RECURSE SHARED_GAME_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+list(FILTER SHARED_GAME_SOURCES EXCLUDE REGEX "[/\\\\](main|game_main|glad)\\.cpp$")
+
+set(GAME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    "${TEMPLATE_EXTERNAL}/glad/include")
-target_link_libraries(Project1Dmet502 PRIVATE glfw glm::glm OpenGL::GL)
+    "${CMAKE_CURRENT_SOURCE_DIR}/External/glad/include")
+
+add_executable(Project1Dmet502
+    src/game_main.cpp
+    ${SHARED_GAME_SOURCES}
+    External/glad/src/glad.c)
+add_executable(Member3Preview
+    src/main.cpp
+    ${SHARED_GAME_SOURCES}
+    External/glad/src/glad.c)
+
+foreach(target Project1Dmet502 Member3Preview)
+    target_include_directories(${target} PRIVATE ${GAME_INCLUDE_DIRS})
+    target_link_libraries(${target} PRIVATE glfw glm::glm OpenGL::GL)
+endforeach()

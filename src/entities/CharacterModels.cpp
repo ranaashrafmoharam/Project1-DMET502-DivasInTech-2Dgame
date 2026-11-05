@@ -18,7 +18,7 @@
 //   Enemies  (Serpentine, snake bodies, tail instead of legs, cobra hoods):
 //     Easy    - Venomari    : tall, huge hood, spits venom from above
 //     Medium  - Hypnobrai   : hunched, holds a staff low to the ground
-//     Hard    - Constrictai : massive armoured brute with fists and horns
+//     Hard    - Constrictai : massive armoured brute with a spiked mace
 //
 // INTERACTS WITH: HierarchicalModel, Player, Enemy, Cutscene
 // ====================================================================
@@ -311,12 +311,23 @@ HierarchicalModel buildHardEnemy() {
     m.addPart("spikeL", "body", tri(14, 16, CONST_BONE), { -14, 20 });
     m.addPart("spikeR", "body", tri(14, 16, CONST_BONE), {  14, 20 });
 
-    // --- shoulders and huge fists (the melee weapon) ---
+    // --- shoulders, arms and the brute's heavy spiked mace ---
     m.addPart("shoulderL", "body", circle(26, CONST_DARK), { -24, 7 });
     m.addPart("shoulderR", "body", circle(26, CONST_DARK), {  24, 7 });
     m.addPart("armL", "body", rect(18, 28, CONST_MID), { -26, -6 },  radians(14));
     m.addPart("armR", "body", rect(18, 28, CONST_MID), {  26, -6 }, -radians(14));
     m.addPart("fistL", "armL", circle(24, CONST_DARK), { 0, -16 });
+
+    // The mace handle is attached to the weapon hand's arm so the Hard
+    // enemy's attack animation swings the complete weapon with its hand.
+    m.addPart("weapon", "armR", rect(38, 9, WOOD), { 22, -16 });
+    m.addPart("maceBand", "weapon", rect(5, 13, GOLD), { 5, 0 });
+    m.addPart("maceHead", "weapon", circle(32, CONST_DARK), { 43, 0 });
+    m.addPart("maceCore", "maceHead", circle(20, CONST_MID), { 0, 0 });
+    m.addPart("maceSpikeTop", "maceHead", tri(10, 13, CONST_BONE), { 0, 19 });
+    m.addPart("maceSpikeBottom", "maceHead", tri(10, 13, CONST_BONE), { 0, -19 }, radians(180));
+    m.addPart("maceSpikeFront", "maceHead", tri(10, 13, CONST_BONE), { 19, 0 }, radians(90));
+    m.addPart("maceSpikeBack", "maceHead", tri(10, 13, CONST_BONE), { -19, 0 }, radians(-90));
     m.addPart("fistR", "armR", circle(24, CONST_DARK), { 0, -16 });
 
     // --- low-set head with horns, jaws and glowing eyes ---

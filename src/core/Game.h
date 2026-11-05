@@ -20,6 +20,9 @@
 #include "../world/WaveManager.h"
 #include "../world/CollisionSystem.h"
 #include "../world/PlayerPlacement.h"
+#include "../scene/Scene.h"
+#include "../scene/LaneHighlight.h"
+#include "../cutscene/Cutscene.h"
 
 class Game {
 public:
@@ -58,6 +61,9 @@ private:
     LaneGrid m_laneGrid;
     WaveManager m_waveManager;
     CollisionSystem m_collisionSystem;
+    Scene m_scene;
+    LaneHighlight m_laneHighlight;
+    Cutscene m_cutscene;
 
     std::vector<Entity*> m_players;
     std::vector<Entity*> m_enemies;

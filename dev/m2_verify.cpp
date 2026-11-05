@@ -261,6 +261,16 @@ int main() {
         check(playersOk,    "every player has ninja headgear (mask/helmet)");
         check(enemiesOk,    "every enemy is serpentine (tail/fangs/horns) and shares no player headgear");
 
+        HierarchicalModel hardModel = CharacterModels::buildHardEnemy();
+        const Part* maceHead = hardModel.part("maceHead");
+        const Part* maceHandle = hardModel.part("weapon");
+        check(maceHead && maceHandle && maceHead->parent == hardModel.indexOf("weapon"),
+              "Hard enemy has a mace head attached to its hand-held weapon");
+        const Vec2 maceRestPosition = hardModel.partWorldPosition("maceHead");
+        Animation::updateAttack(hardModel, 0.0f, 0.5f, false);
+        check((hardModel.partWorldPosition("maceHead") - maceRestPosition).length() > 5.0f,
+              "Hard enemy attack animation swings its attached mace");
+
         // The six models must have different part counts / part sets.
         std::set<int> counts;
         for (UnitType t : types) counts.insert(CharacterModels::buildForType(t).partCount());

@@ -16,7 +16,7 @@
 //   - Defense Player(Cole, Earth Ninja)  - big shield, bulky wall (US-27)
 //   - Easy enemy    (Venomari, upper ranged, spits from above)    (US-35)
 //   - Medium enemy  (Hypnobrai, lower ranged, staff sweep low)    (US-36)
-//   - Hard enemy    (Constrictai, melee brute, runs fastest)      (US-37)
+//   - Hard enemy    (Constrictai, melee brute with spiked mace)   (US-37)
 //   - Everything built from multiple parts, never a single primitive
 //
 // PART NAMES (shared contract with Animation.cpp):

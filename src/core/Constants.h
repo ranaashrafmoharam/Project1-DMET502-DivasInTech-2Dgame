@@ -28,7 +28,8 @@ namespace Constants {
     // 3 distinct lanes stacked horizontally
     // ----------------------------------------------------------------
     constexpr int LANE_COUNT = 3;
-    constexpr float TOP_BAR_HEIGHT = 100.0f; // UI / HUD area at top
+    constexpr float HUD_HEIGHT = 100.0f;
+    constexpr float TOP_BAR_HEIGHT = 390.0f; // First battle lane begins below the scene backdrop
     constexpr float PLAYFIELD_HEIGHT = SCREEN_HEIGHT - TOP_BAR_HEIGHT; // 620 px
     constexpr float LANE_HEIGHT = PLAYFIELD_HEIGHT / LANE_COUNT;       // ~206.67 px
 
@@ -47,7 +48,7 @@ namespace Constants {
     // ----------------------------------------------------------------
     // Boundaries & X-Coordinates
     // ----------------------------------------------------------------
-    constexpr float HOME_BASE_WIDTH = 180.0f;
+    constexpr float HOME_BASE_WIDTH = 252.0f;
     constexpr float HOME_BASE_X     = HOME_BASE_WIDTH; // Right edge of HomeBase (losing line)
     constexpr float PLAYER_SPAWN_X  = HOME_BASE_X + 20.0f; // 200.0f
     constexpr float ENEMY_SPAWN_X   = 1220.0f;             // Near rightmost edge

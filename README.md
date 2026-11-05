@@ -1,7 +1,15 @@
 # Project 1 Skeleton: 2D Tower Defense (DMET 502)
 
-This project contains the team game implementation. It uses GLFW, GLAD and GLM
-from the provided OpenGL Template for VS Code (Other).
+This project contains the team game implementation and a standalone Member 3
+visual preview. It uses GLFW and GLM from the provided OpenGL Template for VS
+Code (Other), plus the vendored GLAD loader.
+
+## Theme and style
+
+The game is set at a mountain monastery where the ninja defend the Golden Weapons from the Serpentine.
+The dusk sky, stone lanes, pagoda, torii gate, clan banners, lanterns and sakura tree establish that setting.
+The palette pairs charcoal stone and indigo dusk with vermilion, gold, ice blue and venom green accents.
+The art uses layered geometric shapes and crisp pixel-art sprites, with gameplay lanes kept readable.
 
 ## Build and run (Windows / PowerShell)
 
@@ -16,10 +24,12 @@ cmake --build build-mingw --config Release
 ```
 
 Run the executable from the project root so it can find `assets/shaders`.
-The game opens at the main menu; click **START GAME** to begin.
+The game opens at the main menu; click **START GAME** to play the introduction
+cutscene, or press Space/Esc to skip it. The standalone Member 3 preview can be
+started with `.\build-mingw\Member3Preview.exe`.
 
 ## How the pieces fit together (one frame)
-1. main.cpp creates Game and calls its run loop.
+1. game_main.cpp creates Game and calls its run loop; main.cpp is the Member 3 preview.
 2. Input turns GLFW events into mouse/key queries.
 3. Game looks at the current state (GameState.h):
    - MAIN_MENU / PAUSED / WON / LOST -> ui/Menus
@@ -37,7 +47,7 @@ The game opens at the main menu; click **START GAME** to begin.
 ## Ownership
 
 ### Member 1
-- src/main.cpp
+- src/game_main.cpp
 - src/core/Constants.h
 - src/core/GameState.h
 - src/core/Game

@@ -46,8 +46,10 @@ public:
     bool isHigh() const { return height == AttackHeight::High; }
     bool isLow()  const { return height == AttackHeight::Low; }
     AttackHeight attackHeight() const { return height; }
+    UnitType getOwnerType() const { return ownerType; }
     float getDamage() const { return damage; }
     float getSpeed()  const { return speed; }
+    float getSpin() const { return spin; }
     // CollisionSystem should check this before applying projectile damage.
     bool canHit(const Entity& target) const;
 

@@ -57,11 +57,13 @@ namespace {
 
     // Which "swing shape" a model uses, decided by the equipment it has.
     //   0 = nothing, 1 = sword (Kai), 2 = shuriken (Zane),
-    //   3 = staff (Hypnobrai), 4 = fist (Constrictai), 5 = venom spit (Venomari)
+    //   3 = staff (Hypnobrai), 4 = fist, 5 = venom spit (Venomari),
+    //   6 = spiked mace (Constrictai)
     int swingKind(const HierarchicalModel& m) {
         if (m.hasPart("blade"))  return 1;
         if (m.hasPart("starN"))  return 2;
         if (m.hasPart("staff"))  return 3;
+        if (m.hasPart("maceHead")) return 6;
         if (m.hasPart("fistR"))  return 4;
         if (m.hasPart("fangL"))  return 5;
         return 0;
@@ -139,6 +141,12 @@ void updateAttack(HierarchicalModel& m, float t, float phase, bool ranged) {
             if (m.hasPart("body")) m.setPose("body", turn(angle * 0.12f));
             break;
         }
+
+        case 6: // Constrictai - swing the heavy mace forward in a broad arc.
+            if (m.hasPart("armR")) m.setPose("armR", turn(angle * 0.85f));
+            if (m.hasPart("armL")) m.setPose("armL", turn(-angle * 0.35f));
+            if (m.hasPart("body")) m.setPose("body", turn(angle * 0.16f));
+            break;
 
         case 5: { // Venomari - rear the head back and lunge the snout forward.
             if (m.hasPart("head"))  m.setPose("head", shiftTurn(angle * 4.0f, angle * 2.0f, angle * 0.35f));

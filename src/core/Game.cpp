@@ -17,6 +17,10 @@
 #include "../entities/Player.h"
 #include "../entities/Enemy.h"
 #include "../entities/Projectile.h"
+#include "../scene/Scene.h"
+#include "../scene/LaneHighlight.h"
+#include "../scene/PropModels.h"
+#include "../cutscene/Cutscene.h"
 #include <iostream>
 #include <string>
 
@@ -101,6 +105,7 @@ bool Game::init() {
         return false;
     }
 
+    m_scene.init();
     reset();
     m_state = GameState::MAIN_MENU;
 
@@ -143,6 +148,7 @@ void Game::reset() {
     m_laneGrid.clear();
     m_waveManager.reset();
     m_collisionSystem.reset();
+    m_cutscene.reset();
 }
 
 bool Game::spendCoins(int amount) {
@@ -191,7 +197,7 @@ void Game::processInput() {
         if (leftClicked) {
             if (btnStart.isHovered(mousePos)) {
                 reset();
-                setState(GameState::PLAYING);
+                setState(GameState::CUTSCENE);
                 return;
             }
             if (btnExit.isHovered(mousePos)) {
@@ -283,7 +289,7 @@ void Game::processInput() {
     }
 
     // 3. Card click selection (Top Bar Cards)
-    if (leftClicked && mousePos.y < Constants::TOP_BAR_HEIGHT) {
+    if (leftClicked && mousePos.y < Constants::HUD_HEIGHT) {
         if (mousePos.x >= 250.0f && mousePos.x <= 360.0f) m_selectedCard = CardType::MELEE;
         if (mousePos.x >= 380.0f && mousePos.x <= 490.0f) m_selectedCard = CardType::RANGED;
         if (mousePos.x >= 510.0f && mousePos.x <= 620.0f) m_selectedCard = CardType::DEFENSE;
@@ -302,6 +308,13 @@ void Game::processInput() {
 }
 
 void Game::update(float dt) {
+    if (m_state == GameState::CUTSCENE) {
+        m_cutscene.update(dt);
+        if (m_cutscene.isFinished())
+            setState(GameState::PLAYING);
+        return;
+    }
+
     if (m_state != GameState::PLAYING) {
         return;
     }
@@ -403,6 +416,11 @@ void Game::render() {
     glClearColor(0.10f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    if (m_state == GameState::CUTSCENE) {
+        m_cutscene.draw();
+        return;
+    }
+
     if (m_state == GameState::MAIN_MENU) {
         // Render Main Menu Screen
         Renderer& renderer = Renderer::getInstance();
@@ -446,70 +464,23 @@ void Game::render() {
 }
 
 void Game::renderPlayfield() {
-    Renderer& renderer = Renderer::getInstance();
-
-    // Home Base (Leftmost safe area)
-    renderer.drawQuad(
-        0.0f,
-        Constants::TOP_BAR_HEIGHT,
-        Constants::HOME_BASE_WIDTH,
-        Constants::PLAYFIELD_HEIGHT,
-        glm::vec4(0.20f, 0.24f, 0.30f, 1.0f)
-    );
-    // Home Base label
-    renderer.drawTextCentered("HOME BASE", Constants::HOME_BASE_WIDTH * 0.5f, Constants::TOP_BAR_HEIGHT + 20.0f, 2.0f, glm::vec4(0.6f, 0.75f, 0.9f, 0.9f));
-    renderer.drawTextCentered("DEFEND!", Constants::HOME_BASE_WIDTH * 0.5f, Constants::TOP_BAR_HEIGHT + 45.0f, 2.0f, glm::vec4(0.9f, 0.3f, 0.3f, 0.9f));
-
-    // Home Base boundary line (Red threshold)
-    renderer.drawQuad(
-        Constants::HOME_BASE_X - 4.0f,
-        Constants::TOP_BAR_HEIGHT,
-        4.0f,
-        Constants::PLAYFIELD_HEIGHT,
-        glm::vec4(0.95f, 0.2f, 0.2f, 0.95f)
-    );
-
-    // Lanes background & dividers
+    m_scene.draw();
     for (int i = 0; i < Constants::LANE_COUNT; ++i) {
-        float y = Constants::getLaneTopY(i);
-
-        // Lane background
-        glm::vec4 laneBgColor = (i % 2 == 0)
-            ? glm::vec4(0.16f, 0.20f, 0.23f, 1.0f)
-            : glm::vec4(0.13f, 0.17f, 0.20f, 1.0f);
-
-        // Lane Hover Highlight
-        if (m_laneGrid.isHovered(i)) {
-            laneBgColor += glm::vec4(0.08f, 0.08f, 0.04f, 0.0f);
-        }
-        // Lane Selected Highlight
-        if (m_laneGrid.isSelected(i)) {
-            laneBgColor += glm::vec4(0.12f, 0.14f, 0.04f, 0.0f);
-        }
-
-        renderer.drawQuad(Constants::HOME_BASE_X, y, Constants::SCREEN_WIDTH - Constants::HOME_BASE_X, Constants::LANE_HEIGHT, laneBgColor);
-
-        // Lane border highlight when selected
-        if (m_laneGrid.isSelected(i)) {
-            renderer.drawBorder(Constants::HOME_BASE_X, y, Constants::SCREEN_WIDTH - Constants::HOME_BASE_X, Constants::LANE_HEIGHT, 3.0f, glm::vec4(0.95f, 0.85f, 0.2f, 0.85f));
-            renderer.drawText("SELECTED", Constants::HOME_BASE_X + 15.0f, y + 10.0f, 1.5f, glm::vec4(0.95f, 0.85f, 0.2f, 0.9f));
-        }
-
-        // Horizontal lane divider
-        renderer.drawQuad(Constants::HOME_BASE_X, y + Constants::LANE_HEIGHT - 2.0f, Constants::SCREEN_WIDTH - Constants::HOME_BASE_X, 2.0f, glm::vec4(0.28f, 0.32f, 0.38f, 0.6f));
+        m_laneHighlight.draw(i, m_laneGrid.isHovered(i), m_laneGrid.isSelected(i));
     }
+    M3Draw::flush();
 }
 
 void Game::renderEntities() {
     Renderer& renderer = Renderer::getInstance();
 
-    // 1. Collectibles (Golden Coins)
+    // Collectibles use Member 3's animated Golden Weapon Shard model.
+    PropModels props;
     for (const auto* c : m_collectibles) {
         if (!c || !c->alive) continue;
-        renderer.drawQuadCentered(c->position.x, c->position.y, c->size.x, c->size.y, glm::vec4(1.0f, 0.84f, 0.0f, 1.0f));
-        renderer.drawBorder(c->position.x - c->size.x * 0.5f, c->position.y - c->size.y * 0.5f, c->size.x, c->size.y, 2.0f, glm::vec4(1.0f, 1.0f, 0.6f, 1.0f));
-        renderer.drawTextCentered("COIN", c->position.x, c->position.y, 1.2f, glm::vec4(0.2f, 0.2f, 0.0f, 1.0f));
+        props.drawCollectible(c->position.x, c->position.y, M3Draw::getTime());
     }
+    M3Draw::flush();
 
     // 2. Players
     for (auto* p : m_players) {
@@ -521,7 +492,25 @@ void Game::renderEntities() {
                 renderer.drawBorder(b.x - 4.0f, b.y - 4.0f, b.width + 8.0f, b.height + 8.0f,
                                     3.0f, glm::vec4(0.0f, 1.0f, 1.0f, 0.9f));
             }
+            const bool hasThemedWeapon = character->model.hasPart("weapon") &&
+                (character->type == EntityType::PLAYER_MELEE ||
+                 character->type == EntityType::PLAYER_RANGED);
+            if (hasThemedWeapon)
+                character->model.setVisible("weapon", false);
             character->draw();
+            if (hasThemedWeapon) {
+                character->model.setVisible("weapon", true);
+                const Transform2D weaponTransform =
+                    character->model.worldTransform(character->model.indexOf("weapon"));
+                const float weaponX = weaponTransform.translation.x;
+                const float weaponY = C::WORLD_HEIGHT - weaponTransform.translation.y;
+                const float weaponAngle = -weaponTransform.rotation;
+                if (character->type == EntityType::PLAYER_MELEE)
+                    props.drawMeleeWeapon(weaponX, weaponY, weaponAngle);
+                else
+                    props.drawRangedWeapon(weaponX, weaponY, weaponAngle);
+                M3Draw::flush();
+            }
             const float hpPercent = character->healthFraction();
             renderer.drawQuad(b.x, b.y - 12.0f, b.width, 8.0f, glm::vec4(0.3f, 0.0f, 0.0f, 0.8f));
             renderer.drawQuad(b.x, b.y - 12.0f, b.width * hpPercent, 8.0f, glm::vec4(0.1f, 0.9f, 0.1f, 0.9f));
@@ -615,10 +604,20 @@ void Game::renderEntities() {
     }
 
     // 4. Projectiles
+    PropModels projectileModels;
+    bool drewThemedProjectile = false;
     for (auto* proj : m_projectiles) {
         if (!proj || !proj->alive) continue;
         if (Projectile* characterProjectile = dynamic_cast<Projectile*>(proj)) {
-            characterProjectile->draw();
+            const int projectileType =
+                characterProjectile->getOwnerType() == UnitType::RangedPlayer ? 0 :
+                characterProjectile->attackHeight() == AttackHeight::High ? 1 : 2;
+            projectileModels.drawProjectile(
+                projectileType,
+                characterProjectile->position.x,
+                characterProjectile->position.y,
+                characterProjectile->getSpin());
+            drewThemedProjectile = true;
             continue;
         }
         Bounds b = proj->getBounds();
@@ -636,14 +635,16 @@ void Game::renderEntities() {
         renderer.drawQuad(b.x, b.y, b.width, b.height, color);
         renderer.drawTextCentered(pName, b.x + b.width * 0.5f, b.y + b.height * 0.5f, 1.0f, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     }
+    if (drewThemedProjectile)
+        M3Draw::flush();
 }
 
 void Game::renderHUD() {
     Renderer& renderer = Renderer::getInstance();
 
     // Top Bar background
-    renderer.drawQuad(0.0f, 0.0f, (float)Constants::SCREEN_WIDTH, Constants::TOP_BAR_HEIGHT, glm::vec4(0.09f, 0.11f, 0.14f, 1.0f));
-    renderer.drawQuad(0.0f, Constants::TOP_BAR_HEIGHT - 2.0f, (float)Constants::SCREEN_WIDTH, 2.0f, glm::vec4(0.3f, 0.3f, 0.35f, 1.0f));
+    renderer.drawQuad(0.0f, 0.0f, (float)Constants::SCREEN_WIDTH, Constants::HUD_HEIGHT, glm::vec4(0.09f, 0.11f, 0.14f, 0.88f));
+    renderer.drawQuad(0.0f, Constants::HUD_HEIGHT - 2.0f, (float)Constants::SCREEN_WIDTH, 2.0f, glm::vec4(0.3f, 0.3f, 0.35f, 1.0f));
 
     // Coins counter box
     renderer.drawQuad(20.0f, 15.0f, 200.0f, 65.0f, glm::vec4(0.16f, 0.18f, 0.22f, 1.0f));
@@ -784,6 +785,8 @@ void Game::run() {
         if (dt > 0.1f) dt = 0.1f;
 
         glfwPollEvents();
+        if (m_state != GameState::CUTSCENE)
+            M3Draw::advanceTime(dt);
         processInput();
         update(dt);
         render();
