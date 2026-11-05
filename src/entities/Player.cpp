@@ -65,7 +65,9 @@ void Player::init(UnitType t, int lane_, float spawnX) {
 // The CollisionSystem / debug text can ask for one hit per swing.
 // --------------------------------------------------------------------
 bool Player::claimAttack() {
-    if (!attacking || attackUsed) return false;
+    // Match the hit to the middle of the weapon's strike animation.
+    if (!attacking || attackUsed ||
+        swingTimer < C::ATTACK_ANIM_TIME * Animation::ATTACK_HIT_PHASE) return false;
     attackUsed = true;
     return true;
 }
@@ -98,16 +100,17 @@ Vec2 Player::muzzle() const {
 // --------------------------------------------------------------------
 void Player::jump() {
     // US-31: jump and duck do not affect the Defense player.
-    if (isStationary()) return;
-    if (jumping) return;               // ignore a second press mid-air
+    if (isStationary() || jumping || jumpLockout > 0.0f) return;
     jumping   = true;
     jumpTimer = 0.0f;
+    jumpLockout = C::JUMP_DURATION + ACTION_LOCKOUT_TIME;
 }
 
 void Player::duck() {
-    if (isStationary()) return;        // US-31
+    if (isStationary() || ducking || duckLockout > 0.0f) return;
     ducking   = true;
     duckTimer = 0.0f;
+    duckLockout = C::DUCK_DURATION + ACTION_LOCKOUT_TIME;
 }
 
 void Player::startSwing() {
@@ -151,6 +154,8 @@ void Player::update(float dt) {
     animTime += dt;
     if (cooldown > 0.0f) cooldown -= dt;
     if (hitTimer > 0.0f) hitTimer -= dt;
+    if (jumpLockout > 0.0f) jumpLockout -= dt;
+    if (duckLockout > 0.0f) duckLockout -= dt;
 
     // ---- attack -----------------------------------------------------
     // Players "start attacking as soon as they are placed, even if no
@@ -209,7 +214,7 @@ void Player::updatePose() {
         Animation::updateJump(model, jumpTimer / C::JUMP_DURATION);   // US-29
     } else {
         if (duckAmount > 0.001f)            Animation::updateDuck(model, duckAmount);  // US-30
-        else if (isStationary())            Animation::updateIdle(model, animTime);    // US-27
+        else if (isStationary() || blocked) Animation::updateIdle(model, animTime);
         else                                Animation::updateWalk(model, animTime);    // US-25 / US-26
 
         if (attacking)                      Animation::updateAttack(model, animTime, attackPhase, isRanged());

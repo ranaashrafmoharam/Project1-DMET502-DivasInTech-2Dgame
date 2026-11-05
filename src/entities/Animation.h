@@ -34,6 +34,9 @@
 
 namespace Animation {
 
+    // Middle of the strike window used by melee attack animations.
+    constexpr float ATTACK_HIT_PHASE = 0.425f;
+
     // ---- locomotion -------------------------------------------------
     // Standing still: a slow "breathing" bob and a gently swaying tail.
     void updateIdle(HierarchicalModel& model, float t);

@@ -97,6 +97,12 @@ void Projectile::update(float dt) {
         alive = false;
 }
 
+bool Projectile::canHit(const Entity& target) const {
+    return isAlive() && target.isAlive() &&
+           faction != Faction::None && target.faction != Faction::None &&
+           faction != target.faction;
+}
+
 void Projectile::draw() {
     if (!alive) return;
 

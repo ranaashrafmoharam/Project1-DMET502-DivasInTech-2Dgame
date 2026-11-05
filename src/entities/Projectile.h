@@ -47,6 +47,8 @@ public:
     AttackHeight attackHeight() const { return height; }
     float getDamage() const { return damage; }
     float getSpeed()  const { return speed; }
+    // CollisionSystem should check this before applying projectile damage.
+    bool canHit(const Entity& target) const;
 
     // ---- lifecycle ---------------------------------------------------
     // Called by the CollisionSystem the moment the shot connects: the

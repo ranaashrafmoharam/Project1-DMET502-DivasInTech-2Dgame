@@ -230,6 +230,11 @@ int main() {
     // ----------------------------------------------------------------
     section("US-28 / US-38  Distinct, multi-part designs");
     {
+        HierarchicalModel hierarchy;
+        PartShapeDef shape;
+        check(hierarchy.addPart("orphan", "missing", shape) == -1 &&
+              hierarchy.partCount() == 0, "hierarchy rejects a missing parent instead of making a root part");
+
         const UnitType types[6] = {
             UnitType::MeleePlayer, UnitType::RangedPlayer, UnitType::DefensePlayer,
             UnitType::EasyEnemy,   UnitType::MediumEnemy, UnitType::HardEnemy
@@ -332,6 +337,35 @@ int main() {
     }
 
     // ----------------------------------------------------------------
+    section("Attack timing and projectile team checks");
+    {
+        Player melee; melee.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
+        melee.update(1.0f / 60.0f);
+        check(!melee.claimAttack(), "damage is not claimed during the attack wind-up");
+        run(melee, 0.16f);
+        check(melee.claimAttack(), "damage is claimed during the weapon strike");
+        check(!melee.claimAttack(), "one attack swing can only deal damage once");
+
+        Enemy enemy; enemy.init(UnitType::HardEnemy, 0, C::ENEMY_SPAWN_X);
+        enemy.update(1.0f / 60.0f);
+        check(!enemy.claimAttack(), "enemy damage is not claimed during the attack wind-up");
+        run(enemy, 0.16f);
+        check(enemy.claimAttack(), "enemy damage is claimed during the weapon strike");
+        check(!enemy.claimAttack(), "one enemy attack can only deal damage once");
+
+        Player ranged; ranged.init(UnitType::RangedPlayer, 0, C::PLAYER_SPAWN_X);
+        Player teammate; teammate.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X + 40.0f);
+        Enemy target; target.init(UnitType::EasyEnemy, 0, C::ENEMY_SPAWN_X);
+        Projectile shot;
+        shot.spawn(ranged.muzzle(), ranged.lane, Faction::Player, ranged.type,
+                   ranged.attackHeight(), ranged.facing(), ranged.attackDamage());
+        check(ranged.attackHeight() == AttackHeight::High, "Ranged player attack has a HIGH dodge tag");
+        check(!shot.canHit(ranged) && !shot.canHit(teammate),
+              "player projectiles cannot hit their owner or other players");
+        check(shot.canHit(target), "player projectiles can hit an enemy");
+    }
+
+    // ----------------------------------------------------------------
     section("US-29  Jump  /  US-30  Duck  /  US-31  Defense ignores both");
     {
         Player p; p.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
@@ -348,6 +382,24 @@ int main() {
         check(p.isDucking(), "duck() puts the player in the duck pose");
         float duckHeight = p.size.y;
         check(duckHeight < C::CHARACTER_HEIGHT * 0.95f, "ducking shrinks the hitbox (a high attack misses)");
+
+        Player lockout; lockout.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
+        lockout.jump();
+        run(lockout, C::JUMP_DURATION + 0.05f);
+        lockout.jump();
+        check(!lockout.isJumping(), "jump cannot be restarted during its lockout");
+        run(lockout, 0.30f);
+        lockout.jump();
+        check(lockout.isJumping(), "jump can be used again after its lockout");
+
+        Player duckLockout; duckLockout.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
+        duckLockout.duck();
+        run(duckLockout, C::DUCK_DURATION + 0.05f);
+        duckLockout.duck();
+        check(!duckLockout.isDucking(), "duck cannot be restarted during its lockout");
+        run(duckLockout, 0.30f);
+        duckLockout.duck();
+        check(duckLockout.isDucking(), "duck can be used again after its lockout");
 
         // Defense ignores jump and duck entirely (US-31).
         Player d; d.init(UnitType::DefensePlayer, 0, C::PLAYER_SPAWN_X);
@@ -369,6 +421,10 @@ int main() {
         run(shot, 0.5f);
         check(shot.position.x > x0 + 100.0f, "player shot travels to the right (US-26)");
         check(shot.getBounds().w > 0.0f && shot.getBounds().h > 0.0f, "shot exposes a hitbox (US-42)");
+        Player teammate; teammate.init(UnitType::MeleePlayer, 0, C::PLAYER_SPAWN_X);
+        Enemy target; target.init(UnitType::EasyEnemy, 0, C::ENEMY_SPAWN_X);
+        check(!shot.canHit(teammate), "a Ranged Player shot cannot harm another player");
+        check(shot.canHit(target), "a Ranged Player shot can harm an enemy");
         shot.onHit();
         check(!shot.isAlive(), "shot disappears on collision (US-26 / US-42)");
 

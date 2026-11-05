@@ -88,7 +88,9 @@ float Enemy::attackRange() const {
 }
 
 bool Enemy::claimAttack() {
-    if (!attacking || attackUsed) return false;
+    // Match the hit to the middle of the weapon's strike animation.
+    if (!attacking || attackUsed ||
+        swingTimer < C::ATTACK_ANIM_TIME * Animation::ATTACK_HIT_PHASE) return false;
     attackUsed = true;
     return true;
 }
@@ -190,8 +192,9 @@ void Enemy::updatePose() {
 
     // Easy / Medium slither (walk cycle drives their tail + coil);
     // Hard runs with a wider stride (US-37).
-    if (type == UnitType::HardEnemy) Animation::updateRun(model, animTime);
-    else                             Animation::updateWalk(model, animTime);
+    if (blocked) Animation::updateIdle(model, animTime);
+    else if (type == UnitType::HardEnemy) Animation::updateRun(model, animTime);
+    else                                  Animation::updateWalk(model, animTime);
 
     if (attacking) Animation::updateAttack(model, animTime, attackPhase, isRanged());
     if (hitTimer > 0.0f) Animation::updateHit(model, hitTimer / HIT_FLINCH_TIME);

@@ -56,13 +56,16 @@ int HierarchicalModel::addPart(const std::string& name,
                                float rotation,
                                const Vec2& scale) {
     // One part per name keeps the Animation lookup simple.
-    if (lookup.find(name) != lookup.end()) return -1;
+    if (name.empty() || lookup.find(name) != lookup.end()) return -1;
+
+    const int parent = parentName.empty() ? -1 : indexOf(parentName);
+    if (!parentName.empty() && parent < 0) return -1;
 
     Part p;
     p.name     = name;
     p.shape    = shape;
     p.restPose = Transform2D(offset, rotation, scale);
-    p.parent   = parentName.empty() ? -1 : indexOf(parentName);
+    p.parent   = parent;
 
     const int index = (int)parts.size();
     parts.push_back(p);

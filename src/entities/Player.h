@@ -35,6 +35,7 @@
 
 #include "Entity.h"
 #include "HierarchicalModel.h"
+#include "Projectile.h"
 
 class Player : public Entity {
 public:
@@ -57,6 +58,7 @@ public:
     bool  isRanged()    const { return type == UnitType::RangedPlayer; }
     float attackDamage() const;
     float attackRange()  const;
+    AttackHeight attackHeight() const { return AttackHeight::High; }
 
     // Weapon socket (world space) and travel direction for a projectile.
     Vec2  muzzle() const;
@@ -66,7 +68,7 @@ public:
     void jump();                              // US-29 (ignored by Defense, US-31)
     void duck();                              // US-30 (ignored by Defense, US-31)
     bool isJumping()   const { return jumping; }
-    bool isDucking()   const { return duckAmount > 0.001f; }
+    bool isDucking()   const { return ducking; }
     float jumpHeight() const { return jumpLift; }
 
     // ---- protection / movement flags set by the CollisionSystem -------
@@ -84,6 +86,7 @@ private:
     float hitFlinchFraction() const { return hitTimer > 0.0f ? hitTimer / HIT_FLINCH_TIME : 0.0f; }
 
     static constexpr float HIT_FLINCH_TIME = 0.25f;
+    static constexpr float ACTION_LOCKOUT_TIME = 0.25f;
 
     // stats copied from Constants at init time
     float moveSpeed      = C::PLAYER_SPEED;
@@ -96,6 +99,8 @@ private:
     float hitTimer    = 0.0f;   // hit flinch fade
     float jumpTimer   = 0.0f;
     float duckTimer   = 0.0f;
+    float jumpLockout = 0.0f;
+    float duckLockout = 0.0f;
 
     // state
     bool  attacking  = false;
