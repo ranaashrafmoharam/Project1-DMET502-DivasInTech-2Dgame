@@ -1,0 +1,7 @@
+# Local build / verification outputs (never commit these)
+dev/out/
+*.exe
+*.o
+
+# Editor / IDE settings (machine-specific paths)
+.vscode/
