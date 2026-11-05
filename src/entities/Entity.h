@@ -3,9 +3,7 @@
 // FILE:     src/entities/Entity.h
 // OWNER:    Member 1
 // TASKS:    M1-02
-// STATUS:   MINIMAL STUB IMPLEMENTED BY MEMBER 2 (agreed) - header only,
-//           no Entity.cpp is required. Member 1 owns this file and may
-//           extend it, but the members below are the agreed contract.
+// STATUS:   IMPLEMENTED
 //
 // PURPOSE:
 //   Base class every unit shares. Gives Member 1's systems one
@@ -20,77 +18,183 @@
 // INTERACTS WITH: Player, Enemy, Projectile, Collectible, CollisionSystem
 // ====================================================================
 
-#include "../core/Math.h"
+#include <glm/glm.hpp>
+#include <algorithm>
 #include "../core/Constants.h"
 
-// Which concrete unit this entity is.
-enum class UnitType {
-    None,
-    MeleePlayer,     // Kai  - Fire Ninja
-    RangedPlayer,    // Zane - Ice Ninja
-    DefensePlayer,   // Cole - Earth Ninja
-    EasyEnemy,       // Venomari  - upper ranged
-    MediumEnemy,     // Hypnobrai - lower ranged
-    HardEnemy        // Constrictai - melee brute
+enum class EntityType {
+    PLAYER_MELEE,
+    PLAYER_RANGED,
+    PLAYER_DEFENSE,
+    ENEMY_EASY,    // Upper-ranged (attacks high -> player ducks)
+    ENEMY_MEDIUM,  // Lower-ranged (attacks low -> player jumps)
+    ENEMY_HARD,    // Melee brute (runs fast, 2 damage)
+    PROJECTILE_PLAYER,
+    PROJECTILE_HIGH,
+    PROJECTILE_LOW,
+    COLLECTIBLE
 };
 
-// Which side an entity fights for.
-enum class Faction { None, Player, Enemy };
-
-// Axis-aligned box used by the CollisionSystem.
 struct Bounds {
-    float x = 0.0f, y = 0.0f, w = 0.0f, h = 0.0f;
+    float x;      // Top-left X
+    float y;      // Top-left Y
+    float width;
+    float height;
 
-    float left()    const { return x; }
-    float right()   const { return x + w; }
-    float bottom()  const { return y; }
-    float top()     const { return y + h; }
-    float centerX() const { return x + w * 0.5f; }
-    float centerY() const { return y + h * 0.5f; }
-
-    bool overlaps(const Bounds& o) const {
-        return x < o.x + o.w && o.x < x + w && y < o.y + o.h && o.y < y + h;
+    bool intersects(const Bounds& other) const {
+        return (x < other.x + other.width &&
+                x + width > other.x &&
+                y < other.y + other.height &&
+                y + height > other.y);
     }
 };
 
 class Entity {
 public:
-    Entity() = default;
+    glm::vec2 position; // Center position (x, y)
+    glm::vec2 size;     // (width, height)
+    int laneIndex;
+    int health;
+    int maxHealth;
+    bool alive;
+    EntityType type;
+
+    float speed;
+    bool isFighting;
+    bool shielded;
+
+    // Jump & Duck mechanics
+    bool isJumping;
+    bool isDucking;
+    float jumpTimer;
+    float duckTimer;
+
+    // Combat timers
+    float attackTimer;
+    float attackCooldown;
+    int attackDamage;
+
+public:
+    Entity(EntityType t, int lane, float x, float y, int hp, float spd)
+        : position(x, y)
+        , size(Constants::UNIT_WIDTH, Constants::UNIT_HEIGHT)
+        , laneIndex(lane)
+        , health(hp)
+        , maxHealth(hp)
+        , alive(true)
+        , type(t)
+        , speed(spd)
+        , isFighting(false)
+        , shielded(false)
+        , isJumping(false)
+        , isDucking(false)
+        , jumpTimer(0.0f)
+        , duckTimer(0.0f)
+        , attackTimer(0.0f)
+        , attackCooldown(Constants::ATTACK_COOLDOWN_MELEE)
+        , attackDamage(1)
+    {
+    }
+
     virtual ~Entity() = default;
 
-    // position = feet of the unit (bottom-centre) in world space.
-    Vec2      position{ 0.0f, 0.0f };
-    int       lane       = 0;
-    float     health     = 1.0f;
-    float     maxHealth  = 1.0f;
-    bool      alive      = true;
-    UnitType  type       = UnitType::None;
-    Faction   faction    = Faction::None;
-    Vec2      size{ C::CHARACTER_WIDTH, C::CHARACTER_HEIGHT };
+    virtual void update(float dt) {
+        if (!alive) return;
 
-    // ---- the two calls Member 1's systems make on every unit ----
-    virtual void update(float dt) = 0;
-    virtual void draw()           = 0;
+        // Advance horizontally along the lane if not stopped in combat
+        if (!isFighting) {
+            if (isPlayer() && type != EntityType::PLAYER_DEFENSE) {
+                position.x += speed * dt;
+            } else if (isEnemy()) {
+                position.x -= speed * dt;
+            } else if (type == EntityType::PROJECTILE_PLAYER) {
+                position.x += speed * dt;
+            } else if (type == EntityType::PROJECTILE_HIGH || type == EntityType::PROJECTILE_LOW) {
+                position.x -= speed * dt;
+            }
+        }
 
-    // ---- shared helpers ----
-    Bounds getBounds() const {
-        return { position.x - size.x * 0.5f, position.y, size.x, size.y };
+        if (attackTimer > 0.0f) {
+            attackTimer -= dt;
+        }
     }
-    bool  isAlive()        const { return alive && health > 0.0f; }
-    bool  isPlayer()       const { return faction == Faction::Player; }
-    bool  isEnemy()        const { return faction == Faction::Enemy; }
-    float healthFraction() const { return maxHealth > 0.0f ? clampf(health / maxHealth, 0.0f, 1.0f) : 0.0f; }
+
+    virtual void draw() {
+        // Will be overridden by Member 2 / 3 / 4 models.
+    }
+
+    virtual void takeDamage(int amount) {
+        if (!alive || shielded) return;
+        health -= amount;
+        if (health <= 0) {
+            health = 0;
+            alive = false;
+        }
+    }
+
+    virtual bool isDead() const {
+        return !alive || health <= 0;
+    }
+
+    virtual Bounds getBounds() const {
+        float effectiveY = position.y;
+        if (isJumping) {
+            effectiveY += Constants::JUMP_HEIGHT_OFFSET;
+        }
+        float effectiveHeight = size.y;
+        if (isDucking) {
+            effectiveHeight *= 0.5f;
+            effectiveY += size.y * 0.25f;
+        }
+
+        return Bounds{
+            position.x - size.x * 0.5f,
+            effectiveY - effectiveHeight * 0.5f,
+            size.x,
+            effectiveHeight
+        };
+    }
+
+    virtual void jump() {
+        if (type == EntityType::PLAYER_DEFENSE) return; // Defense ignores jump
+        if (isJumping) {
+            isJumping = false; // Toggle back to standing
+        } else {
+            isJumping = true;  // Stays jumping until toggled or ducked
+            isDucking = false;
+        }
+    }
+
+    virtual void duck() {
+        if (type == EntityType::PLAYER_DEFENSE) return; // Defense ignores duck
+        if (isDucking) {
+            isDucking = false; // Toggle back to standing
+        } else {
+            isDucking = true;  // Stays ducking until toggled or jumped
+            isJumping = false;
+        }
+    }
+
+    // Type query helpers
+    bool isPlayer() const {
+        return type == EntityType::PLAYER_MELEE ||
+               type == EntityType::PLAYER_RANGED ||
+               type == EntityType::PLAYER_DEFENSE;
+    }
+
+    bool isEnemy() const {
+        return type == EntityType::ENEMY_EASY ||
+               type == EntityType::ENEMY_MEDIUM ||
+               type == EntityType::ENEMY_HARD;
+    }
+
+    bool isDefense() const {
+        return type == EntityType::PLAYER_DEFENSE;
+    }
+
+    bool isProjectile() const {
+        return type == EntityType::PROJECTILE_PLAYER ||
+               type == EntityType::PROJECTILE_HIGH ||
+               type == EntityType::PROJECTILE_LOW;
+    }
 };
-
-// Small helper so Member 1's CollisionSystem / HUD can print a unit name.
-inline const char* unitTypeName(UnitType t) {
-    switch (t) {
-        case UnitType::MeleePlayer:   return "Melee (Kai)";
-        case UnitType::RangedPlayer:  return "Ranged (Zane)";
-        case UnitType::DefensePlayer: return "Defense (Cole)";
-        case UnitType::EasyEnemy:     return "Easy (Venomari)";
-        case UnitType::MediumEnemy:   return "Medium (Hypnobrai)";
-        case UnitType::HardEnemy:     return "Hard (Constrictai)";
-        default:                      return "None";
-    }
-}

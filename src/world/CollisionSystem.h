@@ -3,7 +3,7 @@
 // FILE:     src/world/CollisionSystem.h
 // OWNER:    Member 1
 // TASKS:    M1-08, M1-09, M1-10
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   IMPLEMENTED
 //
 // PURPOSE:
 //   Movement rules and all combat interactions.
@@ -16,9 +16,39 @@
 //   - Projectile hits and collectible pickups
 //   - Detect an enemy reaching the Home Base
 //
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(players, enemies, projectiles, collectibles)
+// PLANNED PUBLIC INTERFACE:
+//   - update(players, enemies, projectiles, collectibles, coins)
 //   - hasEnemyReachedBase()
-//
-// INTERACTS WITH: Entity, Player, Enemy, Projectile, Collectible, Game
 // ====================================================================
+
+#include <vector>
+#include "../entities/Entity.h"
+
+class CollisionSystem {
+public:
+    CollisionSystem();
+
+    void reset();
+
+    // Resolves all collisions, engagements, shielding, projectiles, pickups, and base breach
+    void update(
+        std::vector<Entity*>& players,
+        std::vector<Entity*>& enemies,
+        std::vector<Entity*>& projectiles,
+        std::vector<Entity*>& collectibles,
+        int& currentCoins,
+        float dt
+    );
+
+    bool hasEnemyReachedBase() const { return m_enemyReachedBase; }
+
+private:
+    bool m_enemyReachedBase;
+
+    void updateShielding(std::vector<Entity*>& players);
+    void updateCombat(std::vector<Entity*>& players, std::vector<Entity*>& enemies, float dt);
+    void updateRangedAttacks(std::vector<Entity*>& players, std::vector<Entity*>& enemies, std::vector<Entity*>& projectiles);
+    void updateProjectiles(std::vector<Entity*>& projectiles, std::vector<Entity*>& players, std::vector<Entity*>& enemies);
+    void updateCollectibles(std::vector<Entity*>& collectibles, std::vector<Entity*>& players, int& currentCoins);
+    void checkHomeBaseBreach(const std::vector<Entity*>& enemies, const std::vector<Entity*>& players);
+};

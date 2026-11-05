@@ -3,125 +3,127 @@
 // FILE:     src/core/Constants.h
 // OWNER:    Member 1
 // TASKS:    M1-02
-// STATUS:   MINIMAL STUB IMPLEMENTED BY MEMBER 2 (agreed) - every value
-//           needed by Member 2's players, enemies and projectiles is
-//           here so nothing is hard-coded. Member 1 may extend it.
+// STATUS:   IMPLEMENTED
 //
 // PURPOSE:
 //   Single source of truth for every shared number so nobody hard-
 //   codes values in their own files.
-//
-// RESPONSIBILITIES:
-//   - Window size and projection bounds
-//   - Lane count (3+), lane height, lane y-positions
-//   - Home-base x boundary, enemy spawn x, player spawn x
-//   - Movement speeds (player, enemy, Hard enemy)
-//   - Health, damage and cooldown values per unit type
-//   - Card costs (Melee, Ranged = 2x, Defense = 3x) and starting coins
-//   - Wave sizes (3 / 5 / 10) and spawn interval
-//
-// INTERACTS WITH: Used by every file
 // ====================================================================
 
-#include "Math.h"
+#include <vector>
+#include <string>
 
 namespace Constants {
 
-    // ---------------------------------------------------- window / world
-    constexpr int   WINDOW_WIDTH  = 1280;
-    constexpr int   WINDOW_HEIGHT = 720;
-    constexpr float WORLD_WIDTH   = (float)WINDOW_WIDTH;
-    constexpr float WORLD_HEIGHT  = (float)WINDOW_HEIGHT;
+    // ----------------------------------------------------------------
+    // Window & Coordinate System
+    // Top-left is (0, 0), +X goes right, +Y goes down
+    // ----------------------------------------------------------------
+    constexpr int SCREEN_WIDTH  = 1280;
+    constexpr int SCREEN_HEIGHT = 720;
+    const std::string WINDOW_TITLE = "Ninjago: 2D Tower Defense (DMET 502)";
 
-    // ------------------------------------------------------------- lanes
-    // 4 lanes, viewed from the side.  Row 0 is the bottom lane.
-    constexpr int   LANE_COUNT       = 4;
-    constexpr float PLAYFIELD_BOTTOM = 150.0f;
-    constexpr float PLAYFIELD_TOP    = 650.0f;
-    constexpr float LANE_HEIGHT      = (PLAYFIELD_TOP - PLAYFIELD_BOTTOM) / (float)LANE_COUNT;
+    // ----------------------------------------------------------------
+    // Lane Configuration
+    // 3 distinct lanes stacked horizontally
+    // ----------------------------------------------------------------
+    constexpr int LANE_COUNT = 3;
+    constexpr float TOP_BAR_HEIGHT = 100.0f; // UI / HUD area at top
+    constexpr float PLAYFIELD_HEIGHT = SCREEN_HEIGHT - TOP_BAR_HEIGHT; // 620 px
+    constexpr float LANE_HEIGHT = PLAYFIELD_HEIGHT / LANE_COUNT;       // ~206.67 px
 
-    // Vertical centre of a lane (feet line for the units standing in it).
-    inline float laneCenterY(int lane) {
-        return PLAYFIELD_BOTTOM + LANE_HEIGHT * ((float)lane + 0.5f);
+    // Y-center coordinate for each lane (0, 1, 2)
+    inline float getLaneCenterY(int lane) {
+        if (lane < 0) lane = 0;
+        if (lane >= LANE_COUNT) lane = LANE_COUNT - 1;
+        return TOP_BAR_HEIGHT + (lane + 0.5f) * LANE_HEIGHT;
     }
-    // Which lane a world-space y belongs to (-1 when outside the playfield).
-    inline int laneIndexAt(float worldY) {
-        if (worldY < PLAYFIELD_BOTTOM || worldY > PLAYFIELD_TOP) return -1;
-        return (int)((worldY - PLAYFIELD_BOTTOM) / LANE_HEIGHT);
+
+    // Y-top boundary for each lane
+    inline float getLaneTopY(int lane) {
+        return TOP_BAR_HEIGHT + lane * LANE_HEIGHT;
     }
 
-    // --------------------------------------------------------- x boundary
-    constexpr float HOME_BASE_X    = 120.0f;   // right edge of the monastery gate = losing line
-    constexpr float PLAYER_SPAWN_X = 150.0f;   // players appear at the left end of their lane
-    constexpr float ENEMY_SPAWN_X  = 1240.0f;  // enemies appear at the right edge
-    constexpr float PLAYER_MAX_X   = 1000.0f;  // players stop advancing here so they stay on screen
+    // ----------------------------------------------------------------
+    // Boundaries & X-Coordinates
+    // ----------------------------------------------------------------
+    constexpr float HOME_BASE_WIDTH = 180.0f;
+    constexpr float HOME_BASE_X     = HOME_BASE_WIDTH; // Right edge of HomeBase (losing line)
+    constexpr float PLAYER_SPAWN_X  = HOME_BASE_X + 20.0f; // 200.0f
+    constexpr float ENEMY_SPAWN_X   = 1220.0f;             // Near rightmost edge
+    constexpr float RIGHT_EDGE_X    = static_cast<float>(SCREEN_WIDTH);
 
-    // ------------------------------------------------------------ speeds
-    constexpr float PLAYER_SPEED      = 45.0f;   // Melee / Ranged advance to the right
-    constexpr float DEFENSE_SPEED     = 0.0f;    // Defense never moves
-    constexpr float ENEMY_SPEED       = 42.0f;   // Easy / Medium "normal speed"
-    constexpr float HARD_ENEMY_SPEED  = 78.0f;   // Hard runs faster than the others
+    // ----------------------------------------------------------------
+    // Unit Sizing & Hitbox Dimensions
+    // ----------------------------------------------------------------
+    constexpr float UNIT_WIDTH  = 80.0f;
+    constexpr float UNIT_HEIGHT = 110.0f;
+    constexpr float PROJECTILE_WIDTH  = 30.0f;
+    constexpr float PROJECTILE_HEIGHT = 15.0f;
+    constexpr float COLLECTIBLE_SIZE  = 40.0f;
 
-    // ------------------------------------------------ health and damage
-    constexpr float MELEE_HEALTH        = 5.0f;
-    constexpr float RANGED_HEALTH       = 5.0f;
-    constexpr float DEFENSE_HEALTH      = 7.0f;   // absorbs 7 hits then is removed
-    constexpr float ENEMY_EASY_HEALTH   = 5.0f;
-    constexpr float ENEMY_MEDIUM_HEALTH = 5.0f;
-    constexpr float ENEMY_HARD_HEALTH   = 7.0f;
+    // ----------------------------------------------------------------
+    // Movement Speeds (pixels per second)
+    // ----------------------------------------------------------------
+    constexpr float SPEED_PLAYER_MELEE   = 65.0f;
+    constexpr float SPEED_PLAYER_RANGED  = 55.0f;
+    constexpr float SPEED_PLAYER_DEFENSE = 0.0f; // Stationary
 
-    constexpr float PLAYER_DAMAGE   = 1.0f;   // every player except Defense deals 1
-    constexpr float DEFENSE_DAMAGE  = 0.0f;   // Defense does not attack
-    constexpr float ENEMY_EASY_DAMAGE   = 1.0f;
-    constexpr float ENEMY_MEDIUM_DAMAGE = 1.0f;
-    constexpr float ENEMY_HARD_DAMAGE   = 2.0f;
+    constexpr float SPEED_ENEMY_EASY   = 45.0f;
+    constexpr float SPEED_ENEMY_MEDIUM = 45.0f;
+    constexpr float SPEED_ENEMY_HARD   = 85.0f; // Runs faster!
 
-    // --------------------------------------------------------- cooldowns
-    constexpr float PLAYER_ATTACK_COOLDOWN = 1.10f;
-    constexpr float ENEMY_ATTACK_COOLDOWN  = 1.50f;
-    constexpr float HARD_ENEMY_COOLDOWN    = 1.10f;   // fast brute swings often
-    constexpr float ATTACK_ANIM_TIME       = 0.35f;   // how long the swing pose lasts
+    constexpr float SPEED_PROJECTILE   = 280.0f;
 
-    // --------------------------------------------------------- movement
-    constexpr float CHARACTER_WIDTH  = 42.0f;
-    constexpr float CHARACTER_HEIGHT = 74.0f;
+    // ----------------------------------------------------------------
+    // Health / Durability
+    // ----------------------------------------------------------------
+    constexpr int HP_PLAYER_MELEE   = 5;
+    constexpr int HP_PLAYER_RANGED  = 5;
+    constexpr int HP_PLAYER_DEFENSE = 7; // Absorbs 7 hits
 
-    constexpr float MELEE_RANGE   = 62.0f;    // Melee hits when this close
-    constexpr float RANGED_RANGE  = 620.0f;   // Ranged fires across most of the lane
-    constexpr float ENEMY_RANGED_RANGE = 620.0f;
-    constexpr float ENEMY_MELEE_RANGE  = 58.0f;
+    constexpr int HP_ENEMY_EASY   = 5;
+    constexpr int HP_ENEMY_MEDIUM = 5;
+    constexpr int HP_ENEMY_HARD   = 7;
 
-    // ------------------------------------------------------- projectile
-    constexpr float PROJECTILE_SPEED = 460.0f;
-    constexpr float PROJECTILE_WIDTH = 18.0f;
+    // ----------------------------------------------------------------
+    // Damage Values
+    // ----------------------------------------------------------------
+    constexpr int DMG_PLAYER_MELEE   = 1;
+    constexpr int DMG_PLAYER_RANGED  = 1;
+    constexpr int DMG_PLAYER_DEFENSE = 0;
 
-    // -------------------------------------------------------------- jump
-    constexpr float JUMP_HEIGHT   = 78.0f;   // visible arc height (pixels)
-    constexpr float JUMP_DURATION = 0.70f;   // whole up-and-down arc
+    constexpr int DMG_ENEMY_EASY   = 1;
+    constexpr int DMG_ENEMY_MEDIUM = 1;
+    constexpr int DMG_ENEMY_HARD   = 2; // Hard enemy deals 2 damage
 
-    // -------------------------------------------------------------- duck
-    constexpr float DUCK_DURATION = 0.70f;   // how long the duck pose is held
-    constexpr float DUCK_SCALE_Y  = 0.55f;   // squash factor of the upper body
+    // ----------------------------------------------------------------
+    // Attack Timers & Cooldowns (seconds)
+    // ----------------------------------------------------------------
+    constexpr float ATTACK_COOLDOWN_MELEE = 1.0f;
+    constexpr float ATTACK_COOLDOWN_RANGED = 1.5f;
+    constexpr float RANGED_ATTACK_RANGE = 450.0f; // Range for Ranged Player / Enemy to start shooting
 
-    // ------------------------------------------ costs, coins, collectible
-    constexpr int MELEE_COST      = 10;   // starter player
-    constexpr int RANGED_COST     = MELEE_COST * 2;   // unlocked at 2x
-    constexpr int DEFENSE_COST    = MELEE_COST * 3;   // unlocked at 3x
-    constexpr int STARTING_COINS  = 30;   // enough for exactly three Melee players
-    constexpr int ORB_VALUE       = 5;    // coins gained from one Spinjitzu Energy Orb
+    // Jump & Duck parameters
+    constexpr float JUMP_DURATION = 0.6f;
+    constexpr float DUCK_DURATION = 0.6f;
+    constexpr float JUMP_HEIGHT_OFFSET = -70.0f; // Moves upwards in -Y
 
-    // -------------------------------------------------------------- waves
-    constexpr int WAVE1_SIZE = 3;    // Easy only
-    constexpr int WAVE2_SIZE = 5;    // Easy + Medium
-    constexpr int WAVE3_SIZE = 10;   // Easy + Medium + Hard
-    constexpr float WAVE_SPAWN_INTERVAL = 2.2f;
+    // ----------------------------------------------------------------
+    // Economy & Card Costs
+    // ----------------------------------------------------------------
+    constexpr int STARTING_COINS = 30; // Buys at least 3 Melee players
+    constexpr int COST_MELEE   = 10;
+    constexpr int COST_RANGED  = 20; // 2x Melee
+    constexpr int COST_DEFENSE = 30; // 3x Melee
+    constexpr int COIN_DROP_VALUE = 10;
 
-    // ------------------------------------------------------- health bar
-    constexpr float HEALTH_BAR_WIDTH  = 40.0f;
-    constexpr float HEALTH_BAR_HEIGHT = 6.0f;
-    constexpr float HEALTH_BAR_OFFSET = 10.0f;  // above the unit's head
+    // ----------------------------------------------------------------
+    // Waves Configuration
+    // ----------------------------------------------------------------
+    constexpr int WAVE_1_COUNT = 3;  // Wave 1: at least 3 Easy
+    constexpr int WAVE_2_COUNT = 5;  // Wave 2: at least 5 Easy/Medium
+    constexpr int WAVE_3_COUNT = 10; // Wave 3: at least 10 mixed
+    constexpr float ENEMY_SPAWN_INTERVAL = 3.2f; // Seconds between spawns
 
 } // namespace Constants
-
-// Convenience so files do not have to write Constants:: everywhere.
-namespace C = Constants;
