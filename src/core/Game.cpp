@@ -8,12 +8,8 @@
 #include "../audio/AudioManager.h"
 #include "../ui/TextRenderer.h"
 #include "../ui/Menus.h"
-#include "../ui/HUD.h"
-#include "../ui/PlayerCards.h"
-#include "../ui/HealthBar.h"
 #include "../cutscene/Cutscene.h"
 #include "../world/LaneGrid.h"
-#include "../world/PlayerPlacement.h"
 #include "../world/WaveManager.h"
 #include "../world/CollisionSystem.h"
 #include "../scene/Scene.h"
@@ -78,7 +74,6 @@ bool Game::init(GLFWwindow* window) {
     TextRenderer::instance().init();
     AudioManager::instance().init();
     Menus::instance().init();
-    PlayerCards::instance().init();
     LaneGrid::instance().init();
     Scene::instance().init();
 
@@ -101,14 +96,11 @@ void Game::reset() {
     m_players.clear();
     m_enemies.clear();
     m_projectiles.clear();
-    m_collectibles.clear();
 
     LaneGrid::instance().reset();
     WaveManager::instance().reset();
     CollisionSystem::instance().reset();
-    PlayerCards::instance().clearSelection();
     Cutscene::instance().reset();
-    HUD::instance().setCoins(m_coins);
 }
 
 void Game::quit() {
@@ -169,9 +161,6 @@ void Game::run() {
                 // Projectiles
                 m_projectiles.push_back(std::make_shared<Projectile>(ProjectileType::PLAYER_SHURIKEN, 1, 420.0f, 0.0f));
                 m_projectiles.push_back(std::make_shared<Projectile>(ProjectileType::ENEMY_UPPER_ACID, 0, 680.0f, 0.0f));
-
-                // Collectibles (Golden Shards)
-                m_collectibles.push_back(std::make_shared<Collectible>(0, 560.0f, Constants::laneY(0) + 15.0f));
 
                 // Select Lane 1
                 LaneGrid::instance().selectSingleLane(1);
@@ -238,27 +227,11 @@ void Game::update(float dt) {
         }
 
         // Update HUD coin count
-        HUD::instance().setCoins(m_coins);
-        HUD::instance().update(dt);
-
-        // Update Player Cards (auto-unlock / lock with coins, US-21)
-        PlayerCards::instance().update(m_coins, mouse, leftClicked);
-
         // Lane grid hover & selection
         int hoveredLane = LaneGrid::instance().laneAt(mouse);
 
         if (leftClicked && hoveredLane != -1) {
-            int selCard = PlayerCards::instance().getSelectedCard();
-            if (selCard >= 0) {
-                // If a card is selected, click places character in that lane! (US-23)
-                bool placed = PlayerPlacement::instance().tryPlacePlayer(selCard, hoveredLane, m_coins, m_players);
-                if (placed) {
-                    PlayerCards::instance().clearSelection();
-                }
-            } else {
-                // If no card selected, toggles lane selection (US-14)
-                LaneGrid::instance().toggleLane(hoveredLane);
-            }
+            LaneGrid::instance().toggleLane(hoveredLane);
         }
 
         // Jump & Duck commands across all selected lanes (US-29, US-30)
@@ -331,13 +304,8 @@ void Game::update(float dt) {
             if (pr && pr->isAlive) pr->update(dt);
         }
 
-        // Update collectibles
-        for (auto& c : m_collectibles) {
-            if (c) c->update(dt);
-        }
-
         // Collisions, attacks, pickups, and base breaches
-        CollisionSystem::instance().update(m_players, m_enemies, m_projectiles, m_collectibles, m_coins);
+        CollisionSystem::instance().update(m_players, m_enemies, m_projectiles, m_coins);
 
         // Win / Lose conditions:
         // US-50: If enemy reaches home base in any lane, lose!
@@ -401,11 +369,6 @@ void Game::render() {
         Scene::instance().draw();
         LaneHighlight::draw();
 
-        // Collectibles
-        for (auto& c : m_collectibles) {
-            if (c) c->draw();
-        }
-
         // Defenders
         for (auto& p : m_players) {
             if (p && p->isAlive) p->draw();
@@ -420,15 +383,6 @@ void Game::render() {
         for (auto& pr : m_projectiles) {
             if (pr && pr->isAlive) pr->draw();
         }
-
-        // In-game HUD (US-17, US-40)
-        HUD::instance().draw(WaveManager::instance().getCurrentWave(),
-                             WaveManager::instance().getTotalWaves(),
-                             WaveManager::instance().getEnemiesRemaining(),
-                             WaveManager::instance().getWaveName());
-
-        // Player Cards (US-18, US-19, US-20)
-        PlayerCards::instance().draw();
 
         // Overlays for Pause, Win, or Lose
         if (m_state == GameState::PAUSED) {

@@ -11,7 +11,6 @@ CollisionSystem& CollisionSystem::instance() {
 void CollisionSystem::update(std::vector<std::shared_ptr<Player>>& players,
                              std::vector<std::shared_ptr<Enemy>>& enemies,
                              std::vector<std::shared_ptr<Projectile>>& projectiles,
-                             std::vector<std::shared_ptr<Collectible>>& collectibles,
                              int& coins) {
     m_baseBreached = false;
 
@@ -60,7 +59,6 @@ void CollisionSystem::update(std::vector<std::shared_ptr<Player>>& players,
                     if (!e->isAlive) {
                         AudioManager::instance().playSound(SoundID::UNIT_DEATH);
                         // Drop collectible shard at enemy location (US-46)
-                        collectibles.push_back(std::make_shared<Collectible>(e->lane, e->x, e->y));
                     }
                 }
 
@@ -95,7 +93,6 @@ void CollisionSystem::update(std::vector<std::shared_ptr<Player>>& players,
 
                     if (!e->isAlive) {
                         AudioManager::instance().playSound(SoundID::UNIT_DEATH);
-                        collectibles.push_back(std::make_shared<Collectible>(e->lane, e->x, e->y));
                     }
                     break;
                 }
@@ -135,22 +132,6 @@ void CollisionSystem::update(std::vector<std::shared_ptr<Player>>& players,
         }
     }
 
-    // 4. Collectible Pickups by Players (US-47)
-    for (auto& c : collectibles) {
-        if (!c || c->isCollected()) continue;
-
-        for (const auto& p : players) {
-            if (!p || !p->isAlive || p->lane != c->lane) continue;
-
-            // Player collides with or passes collectible
-            if (p->x + p->width >= c->x && p->x <= c->x + c->width + 25.0f) {
-                c->collect();
-                coins += c->getValue(); // update coin total
-                break;
-            }
-        }
-    }
-
     // 5. Home Base Breach Check (US-50)
     for (const auto& e : enemies) {
         if (e && e->isAlive) {
@@ -172,6 +153,4 @@ void CollisionSystem::update(std::vector<std::shared_ptr<Player>>& players,
     projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(),
         [](const std::shared_ptr<Projectile>& pr) { return !pr || !pr->isAlive; }), projectiles.end());
 
-    collectibles.erase(std::remove_if(collectibles.begin(), collectibles.end(),
-        [](const std::shared_ptr<Collectible>& c) { return !c || c->isDone(); }), collectibles.end());
 }

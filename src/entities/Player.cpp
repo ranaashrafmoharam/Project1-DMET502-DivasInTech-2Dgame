@@ -1,7 +1,6 @@
 #include "Player.h"
 #include "../core/Renderer.h"
 #include "../core/Constants.h"
-#include "../ui/HealthBar.h"
 #include <cmath>
 #include <algorithm>
 
@@ -94,7 +93,6 @@ void Player::update(float dt) {
 
 void Player::draw() {
     Renderer& ren = Renderer::instance();
-    HealthBar& hb = HealthBar::instance();
 
     float currentY = y + m_yOffset;
     float currentH = (m_duckTimer > 0.0f) ? height * 0.75f : height;
@@ -103,8 +101,7 @@ void Player::draw() {
     ren.drawCircle(x + width * 0.5f, y + 2.0f, 18.0f, glm::vec4(0.04f, 0.06f, 0.10f, 0.40f));
 
     // Red damage tint feedback (US-43: intensifies as health drops)
-    float damageTint = hb.getTintAmount(health, maxHealth);
-    ren.setTint(damageTint);
+    ren.setTint(0.0f);
 
     // Defense aura / stone glow if Cole
     if (type == EntityType::PLAYER_DEFENSE) {

@@ -1,7 +1,6 @@
 #include "Enemy.h"
 #include "../core/Renderer.h"
 #include "../core/Constants.h"
-#include "../ui/HealthBar.h"
 #include <cmath>
 
 Enemy::Enemy(EntityType enemyType, int laneIdx, float startX)
@@ -64,7 +63,6 @@ void Enemy::update(float dt) {
 
 void Enemy::draw() {
     Renderer& ren = Renderer::instance();
-    HealthBar& hb = HealthBar::instance();
 
     // Subtle slithering bobbing animation
     float bob = std::sin(m_animTime * 8.0f) * 2.5f;
@@ -73,8 +71,7 @@ void Enemy::draw() {
     ren.drawCircle(x + width * 0.5f, y + 2.0f, 18.0f, glm::vec4(0.04f, 0.06f, 0.10f, 0.40f));
 
     // Red damage tint feedback (US-43)
-    float damageTint = hb.getTintAmount(health, maxHealth);
-    ren.setTint(damageTint);
+    ren.setTint(0.0f);
 
     // Draw enemy sprite flipped horizontally (facing left toward monastery)
     ren.drawSprite(m_spriteName, x, y + bob, width, height, true);
@@ -82,6 +79,4 @@ void Enemy::draw() {
     // Reset tint
     ren.setTint(0.0f);
 
-    // Visible Health Bar above unit (US-44)
-    hb.draw(x, y + bob, width, height, health, maxHealth, true);
 }

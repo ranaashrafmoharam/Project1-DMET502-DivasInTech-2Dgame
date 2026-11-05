@@ -10,7 +10,6 @@
 #include "../entities/Player.h"
 #include "../entities/Enemy.h"
 #include "../entities/Projectile.h"
-#include "../entities/Collectible.h"
 
 class CollisionSystem {
 public:
@@ -19,7 +18,6 @@ public:
     void update(std::vector<std::shared_ptr<Player>>& players,
                 std::vector<std::shared_ptr<Enemy>>& enemies,
                 std::vector<std::shared_ptr<Projectile>>& projectiles,
-                std::vector<std::shared_ptr<Collectible>>& collectibles,
                 int& coins);
 
     bool hasEnemyReachedBase() const { return m_baseBreached; }

@@ -11,7 +11,6 @@
 #include "../entities/Player.h"
 #include "../entities/Enemy.h"
 #include "../entities/Projectile.h"
-#include "../entities/Collectible.h"
 
 struct GLFWwindow;
 
@@ -50,5 +49,4 @@ private:
     std::vector<std::shared_ptr<Player>> m_players;
     std::vector<std::shared_ptr<Enemy>> m_enemies;
     std::vector<std::shared_ptr<Projectile>> m_projectiles;
-    std::vector<std::shared_ptr<Collectible>> m_collectibles;
 };
