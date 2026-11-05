@@ -1,4 +1,17 @@
+#version 330 core
 // assets/shaders/basic.vert
 // OWNER: Member 1
-// PURPOSE: Vertex shader used for most 2D drawing: applies the model matrix and the orthographic projection.
-// STATUS: PLACEHOLDER (no shader code yet)
+// Orthographic 2D projection and model transform
+
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec2 aTexCoord;
+
+out vec2 TexCoord;
+
+uniform mat4 u_Projection;
+uniform mat4 u_Model;
+
+void main() {
+    gl_Position = u_Projection * u_Model * vec4(aPos, 0.0, 1.0);
+    TexCoord = aTexCoord;
+}
