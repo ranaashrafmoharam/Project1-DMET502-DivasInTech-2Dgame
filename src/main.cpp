@@ -29,6 +29,9 @@
 #include "scene/PropModels.h"
 #include "scene/LaneHighlight.h"
 #include "scene/CharacterSprites.h"
+#include "ui/PlayerCards.h"
+#include "ui/HUD.h"
+#include "ui/HealthBar.h"
 
 namespace
 {
@@ -42,6 +45,10 @@ bool autoDemo = false;
 bool forceAttack = false;
 bool forceJump = false;
 bool forceDuck = false;
+float previewAttackCooldown = 0.0f;
+int selectedPlayerCard = 0;
+bool cardClicked = false;
+int cardCosts[3] = {10, 20, 30};
 
 struct DroppedShard
 {
@@ -63,7 +70,39 @@ struct FloatingText
 
 std::vector<DroppedShard> activeShards;
 std::vector<FloatingText> floatTexts;
-int goldenShardCount = 175;
+int goldenShardCount = 30;
+std::string hudNotification;
+float hudNotificationTime = 0.0f;
+int previewEnemiesRemaining = 3;
+int previewGateHealth = 100;
+int playerHealth[3] = {5, 5, 5};
+const int playerMaxHealth[3] = {5, 5, 5};
+int enemyHealth[3] = {5, 5, 5};
+const int enemyMaxHealth[3] = {5, 5, 5};
+
+bool isCardUnlocked(int card)
+{
+    return card >= 0 && card < 3 && goldenShardCount >= cardCosts[card];
+}
+
+void selectCardIfUnlocked(int card)
+{
+    if (isCardUnlocked(card))
+        selectedPlayerCard = card;
+}
+
+bool placeSelectedPlayerOnLane(int lane)
+{
+    if (lane < 0 || lane >= 3 || !isCardUnlocked(selectedPlayerCard))
+        return false;
+
+    PlayerCards cardLogic;
+    if (!cardLogic.trySpendCard(selectedPlayerCard, goldenShardCount))
+        return false;
+    if (!isCardUnlocked(selectedPlayerCard))
+        selectCardIfUnlocked(0);
+    return true;
+}
 
 void cursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -75,13 +114,22 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
+        cardClicked = true;
         // Lane selection
         if (mouseY >= 390.0 && mouseY < 720.0 && mouseX >= 252.0)
         {
             int lane = static_cast<int>((mouseY - 390.0) / 110.0);
             if (lane >= 0 && lane < 3)
             {
-                laneSelected[lane] = !laneSelected[lane];
+                if (!laneSelected[lane])
+                {
+                    if (placeSelectedPlayerOnLane(lane))
+                        laneSelected[lane] = true;
+                }
+                else
+                {
+                    laneSelected[lane] = false;
+                }
             }
         }
 
@@ -96,6 +144,8 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
                 {
                     s.collected = true;
                     goldenShardCount += 25;
+                    hudNotification = "+25 GOLDEN SHARDS";
+                    hudNotificationTime = 2.0f;
                     floatTexts.push_back({s.x, s.y - 10.0f, "+25 SHARDS", 1.0f, 1.0f, 0.9f, 0.2f});
                 }
             }
@@ -121,6 +171,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             laneSelected[1] = !laneSelected[1];
         if (key == GLFW_KEY_3)
             laneSelected[2] = !laneSelected[2];
+        if (key == GLFW_KEY_K)
+            selectCardIfUnlocked(0);
+        if (key == GLFW_KEY_Z)
+            selectCardIfUnlocked(1);
+        if (key == GLFW_KEY_C)
+            selectCardIfUnlocked(2);
     }
     else if (action == GLFW_RELEASE)
     {
@@ -175,6 +231,8 @@ int main()
     Cutscene cutscene;
     LaneHighlight laneHighlight;
     PropModels props;
+    PlayerCards playerCards;
+    HUD hud;
 
     scene.init();
 
@@ -200,7 +258,31 @@ int main()
             cutscene.reset();
         }
 
+        previewAttackCooldown = std::max(0.0f, previewAttackCooldown - dt);
+        if (forceAttack && previewAttackCooldown <= 0.0f)
+        {
+            bool attacked = false;
+            for (int lane = 0; lane < 3; ++lane)
+            {
+                if (laneSelected[lane] && enemyHealth[lane] > 0)
+                {
+                    enemyHealth[lane] = std::max(0, enemyHealth[lane] - 1);
+                    attacked = true;
+                    break;
+                }
+            }
+            if (attacked)
+                previewAttackCooldown = 0.35f;
+        }
+
         cutscene.update(dt);
+        if (cutscene.isFinished())
+        {
+            playerCards.update(goldenShardCount, static_cast<float>(mouseX),
+                               static_cast<float>(mouseY), cardClicked);
+            selectedPlayerCard = playerCards.getSelectedCard();
+        }
+        cardClicked = false;
 
         glViewport(0, 0, 1280, 720);
         glClearColor(0.08f, 0.07f, 0.14f, 1.0f);
@@ -247,6 +329,8 @@ int main()
                     {
                         shard.collected = true;
                         goldenShardCount += 25;
+                        hudNotification = "+25 GOLDEN SHARDS";
+                        hudNotificationTime = 2.0f;
                         floatTexts.push_back({shard.x, shard.y - 18.0f, "+25 SHARDS", 1.0f, 1.0f, 0.95f, 0.3f});
                     }
                 }
@@ -328,6 +412,12 @@ int main()
                     CharacterSprites::drawCole(ninjaX[lane], yPos, 2.7f, nState, curTime + lane, true);
                     CharacterSprites::drawVenomari(villainX[lane], yPos, 2.7f, vState, curTime + lane + 1.2f, false);
                 }
+
+                // Player and enemy health bars in the Member 3 pixel-art style.
+                HealthBar::draw(ninjaX[lane], yPos - 58.0f, 64.0f,
+                                playerHealth[lane], playerMaxHealth[lane], false);
+                HealthBar::draw(villainX[lane], yPos - 58.0f, 64.0f,
+                                enemyHealth[lane], enemyMaxHealth[lane], true);
             }
 
             // 5. Floating Score / Shard Collection Popups
@@ -347,57 +437,29 @@ int main()
             }
 
             // =========================================================================
-            // 6. OFFICIAL CURRENCY HUD: GOLDEN WEAPON SHARDS
+            // 6. Reusable gameplay HUD
             // =========================================================================
-            float curBoxX = 20.0f;
-            float curBoxY = 8.0f;
-            float curBoxW = 230.0f;
-            float curBoxH = 110.0f;
-
-            M3Draw::quad(curBoxX, curBoxY, curBoxW, curBoxH, 0.08f, 0.07f, 0.14f, 0.95f);
-            M3Draw::quad(curBoxX + 2, curBoxY + 2, curBoxW - 4, curBoxH - 4, 0.88f, 0.76f, 0.32f, 0.95f); // Gold rim
-            M3Draw::quad(curBoxX + 5, curBoxY + 5, curBoxW - 10, curBoxH - 10, 0.12f, 0.11f, 0.18f, 0.95f);
-
-            // Animated spinning 3D Golden Weapon Shard Icon inside the HUD
-            props.drawCollectible(curBoxX + 38.0f, curBoxY + 44.0f, curTime);
-
-            M3Draw::text(curBoxX + 72.0f, curBoxY + 22.0f, "GOLDEN SHARDS", 1.55f, 1.0f, 0.90f, 0.40f);
-
-            char shardStr[32];
-            std::snprintf(shardStr, sizeof(shardStr), "%d", goldenShardCount);
-            M3Draw::text(curBoxX + 72.0f, curBoxY + 46.0f, shardStr, 2.5f, 1.0f, 0.98f, 0.65f);
-
-            M3Draw::text(curBoxX + 16.0f, curBoxY + 88.0f, "Defeat snakes to collect!", 1.2f, 0.9f, 0.85f, 0.7f);
+            GameplayHudState hudState;
+            hudState.coins = goldenShardCount;
+            hudState.currentWave = 1;
+            hudState.totalWaves = 3;
+            hudState.enemiesRemaining = 0;
+            for (int lane = 0; lane < 3; ++lane)
+                if (enemyHealth[lane] > 0)
+                    ++hudState.enemiesRemaining;
+            hudState.gateHealth = previewGateHealth;
+            if (hudNotificationTime > 0.0f)
+            {
+                hudNotificationTime = std::max(0.0f, hudNotificationTime - dt);
+                hudState.notification = hudNotification;
+                hudState.notificationAlpha = std::min(1.0f, hudNotificationTime);
+            }
+            hud.draw(hudState);
 
             // =========================================================================
-            // 7. Props & Weapons Showcase Panel at Top-Center
+            // 7. Player Selection Cards
             // =========================================================================
-            M3Draw::quad(260.0f, 8.0f, 650.0f, 110.0f, 0.08f, 0.07f, 0.14f, 0.90f);
-            M3Draw::quad(262.0f, 10.0f, 646.0f, 106.0f, 0.78f, 0.65f, 0.28f, 0.90f);
-            M3Draw::quad(264.0f, 12.0f, 642.0f, 102.0f, 0.12f, 0.11f, 0.18f, 0.95f);
-            M3Draw::text(280.0f, 18.0f, "PROPS & WEAPONS PREVIEW (MEMBER 3)", 1.75f, 1.0f, 0.95f, 0.5f);
-
-            // 1. Sword of Fire (Melee)
-            props.drawMeleeWeapon(325.0f, 65.0f, -0.65f);
-            M3Draw::text(302.0f, 94.0f, "FIRE SWORD", 1.3f, 1.0f, 0.58f, 0.25f);
-
-            // 2. Frost Bow & Shurikens (Ranged)
-            props.drawRangedWeapon(440.0f, 65.0f, -0.65f);
-            M3Draw::text(416.0f, 94.0f, "FROST BOW", 1.3f, 0.5f, 0.90f, 1.0f);
-
-            // 3. Projectiles (Zane Shuriken, Venomari Acid, Hypnobrai Wave)
-            props.drawProjectile(0, 535.0f, 62.0f, 0.0f);
-            M3Draw::text(516.0f, 94.0f, "SHURIKEN", 1.3f, 0.7f, 0.92f, 1.0f);
-
-            props.drawProjectile(1, 625.0f, 62.0f, 0.0f);
-            M3Draw::text(606.0f, 94.0f, "VENOM SPIT", 1.3f, 0.45f, 0.95f, 0.35f);
-
-            props.drawProjectile(2, 725.0f, 62.0f, 0.0f);
-            M3Draw::text(700.0f, 94.0f, "HYPNO WAVE", 1.3f, 0.85f, 0.45f, 0.95f);
-
-            // 4. Golden Weapon Shard Collectible (Spinning 3D & Bobbing)
-            props.drawCollectible(835.0f, 58.0f, curTime);
-            M3Draw::text(796.0f, 94.0f, "GOLDEN SHARD", 1.3f, 1.0f, 0.90f, 0.25f);
+            playerCards.draw();
 
             // =========================================================================
             // 8. Animation & Game Controls HUD at Top-Right

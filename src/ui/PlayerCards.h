@@ -1,23 +1,20 @@
 #pragma once
-// ====================================================================
-// FILE:     src/ui/PlayerCards.h
-// OWNER:    Member 4
-// TASKS:    M4-06
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
-//
-// PURPOSE:
-//   The three player cards (Melee, Ranged, Defense).
-//
-// RESPONSIBILITIES:
-//   - Locked = grayscale and no hover/click
-//   - Unlocked = normal colours, hover and selectable
-//   - Auto-unlock when coins reach the cost, auto re-lock when below
-//   - Show which card is selected
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - update(coins, mouse, click)
-//   - draw()
-//   - getSelectedCard()
-//
-// INTERACTS WITH: Input, HUD, PlayerPlacement, Renderer
-// ====================================================================
+
+class PlayerCards
+{
+public:
+    void update(int coins, float mouseX, float mouseY, bool clicked);
+    void draw() const;
+
+    bool canSelect(int card, int coins) const;
+    bool trySpendSelected(int& coins) const;
+    bool trySpendCard(int card, int& coins) const;
+    void selectCard(int card);
+    int getSelectedCard() const { return selectedCard; }
+    int getCost(int card) const;
+
+private:
+    int selectedCard = 0;
+    int hoveredCard = -1;
+    int availableCoins = 0;
+};

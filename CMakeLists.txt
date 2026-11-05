@@ -21,6 +21,10 @@ add_executable(Member3Preview
     src/scene/PropModels.cpp
     src/scene/LaneHighlight.cpp
     src/cutscene/Cutscene.cpp
+    src/ui/PlayerCards.cpp
+    src/ui/HUD.cpp
+    src/entities/Collectible.cpp
+    src/ui/HealthBar.cpp
     External/glad/src/glad.c
 )
 
