@@ -3,7 +3,7 @@
 // FILE:     src/scene/EnvironmentElements.h
 // OWNER:    Member 3
 // TASKS:    M3-03 to M3-07
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   The five or more themed environment objects.

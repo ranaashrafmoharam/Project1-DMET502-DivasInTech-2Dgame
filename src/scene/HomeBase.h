@@ -3,7 +3,7 @@
 // FILE:     src/scene/HomeBase.h
 // OWNER:    Member 3
 // TASKS:    M3-08
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   The player's safe zone at the left end of the playfield.

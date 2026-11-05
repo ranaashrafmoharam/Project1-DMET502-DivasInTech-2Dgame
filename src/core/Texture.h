@@ -3,7 +3,7 @@
 // FILE:     src/core/Texture.h
 // OWNER:    Member 3
 // TASKS:    M3-14
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   Loads images into OpenGL textures and caches them so the same

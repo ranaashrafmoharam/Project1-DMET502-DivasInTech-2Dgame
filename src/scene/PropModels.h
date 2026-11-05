@@ -3,7 +3,7 @@
 // FILE:     src/scene/PropModels.h
 // OWNER:    Member 3
 // TASKS:    M3-09, M3-10
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   Weapon, projectile and collectible visuals.

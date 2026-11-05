@@ -14,6 +14,7 @@ FetchContent_MakeAvailable(glfw)
 
 add_executable(Member3Preview
     src/main.cpp
+    src/core/Texture.cpp
     src/scene/Scene.cpp
     src/scene/EnvironmentElements.cpp
     src/scene/HomeBase.cpp

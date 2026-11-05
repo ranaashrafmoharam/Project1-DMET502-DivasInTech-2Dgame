@@ -9,7 +9,7 @@ public:
 // FILE:     src/scene/LaneHighlight.h
 // OWNER:    Member 3
 // TASKS:    M3-11
-// STATUS:   PLACEHOLDER (documentation only, no implementation yet)
+// STATUS:   MEMBER 3 IMPLEMENTATION
 //
 // PURPOSE:
 //   Draws the lane hover and selected-lane highlights.
