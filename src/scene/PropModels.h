@@ -1,34 +1,16 @@
 #pragma once
 // ====================================================================
 // FILE:     src/scene/PropModels.h
-// OWNER:    Member 3
-// TASKS:    M3-09, M3-10
-// STATUS:   MEMBER 3 IMPLEMENTATION
-//
-// PURPOSE:
-//   Weapon, projectile and collectible visuals.
-//
-// RESPONSIBILITIES:
-//   - Melee and ranged weapons
-//   - Player projectile and enemy upper/lower projectiles
-//   - Collectible/coin model with spin animation
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - drawMeleeWeapon()
-//   - drawRangedWeapon()
-//   - drawProjectile(type)
-//   - drawCollectible()
-//
-// INTERACTS WITH: CharacterModels, Projectile, Collectible
+// Visual helpers for props: weapons, projectiles, collectibles.
 // ====================================================================
 
-#pragma once
+#include <glm/glm.hpp>
+#include <string>
 
-class PropModels
-{
+class PropModels {
 public:
-    void drawMeleeWeapon(float x, float y, float angle = 0.0f);
-    void drawRangedWeapon(float x, float y, float angle = 0.0f);
-    void drawProjectile(int type, float x, float y, float rotation = 0.0f);
-    void drawCollectible(float x, float y, float spin = 0.0f);
+    static void drawMeleeWeapon(float x, float y, float rot = 0.0f);
+    static void drawRangedWeapon(float x, float y, float rot = 0.0f);
+    static void drawProjectile(const std::string& type, float x, float y, float rot = 0.0f);
+    static void drawCollectible(float x, float y, float rot = 0.0f);
 };

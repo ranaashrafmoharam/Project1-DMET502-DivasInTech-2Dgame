@@ -1,34 +1,35 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Texture.h
-// OWNER:    Member 3
-// TASKS:    M3-14
-// STATUS:   MEMBER 3 IMPLEMENTATION
-//
-// PURPOSE:
-//   Loads images into OpenGL textures and caches them so the same
-//   image is never loaded twice.
-//
-// RESPONSIBILITIES:
-//   - Load an image file into a texture
-//   - Cache textures by path
-//   - Bind a texture for drawing
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, declared here):
-//   - load(path)
-//   - bind(slot)
-//
-// INTERACTS WITH: Scene, Mesh, HUD, PlayerCards
+// Loads images into OpenGL textures and caches them.
 // ====================================================================
 
-#pragma once
-
+#include <glad/glad.h>
 #include <string>
+#include <unordered_map>
 
-class Texture
-{
+struct TextureInfo {
+    GLuint id = 0;
+    int width = 0;
+    int height = 0;
+};
+
+class TextureManager {
 public:
-    static unsigned int load(const std::string& path);
-    static void bind(unsigned int texture, unsigned int slot = 0);
-    static void clearCache();
+    static TextureManager& instance();
+
+    bool init();
+    void cleanup();
+
+    TextureInfo get(const std::string& name);
+    GLuint getID(const std::string& name);
+
+    // Register a texture from raw RGBA buffer
+    TextureInfo createFromRGBA(const std::string& name, int width, int height, const unsigned char* data);
+
+private:
+    TextureManager() = default;
+    ~TextureManager() = default;
+
+    std::unordered_map<std::string, TextureInfo> m_textures;
 };

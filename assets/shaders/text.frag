@@ -1,4 +1,17 @@
-// assets/shaders/text.frag
-// OWNER: Member 4
-// PURPOSE: Fragment shader that samples the font atlas and applies text colour.
-// STATUS: PLACEHOLDER (no shader code yet)
+#version 330 core
+in vec2 TexCoord;
+out vec4 FragColor;
+
+uniform vec4  uColor;
+uniform int   uUseTexture;
+uniform sampler2D uFontTexture;
+
+void main() {
+    if (uUseTexture == 1) {
+        float alpha = texture(uFontTexture, TexCoord).r;
+        if (alpha < 0.1) discard;
+        FragColor = vec4(uColor.rgb, uColor.a * alpha);
+    } else {
+        FragColor = uColor;
+    }
+}

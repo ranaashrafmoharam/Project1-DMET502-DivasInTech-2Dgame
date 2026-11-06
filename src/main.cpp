@@ -1,28 +1,13 @@
-// ====================================================================
-// FILE:     src/main.cpp
-// OWNER:    Member 3 Preview Launcher
-// TASKS:    M3-PREVIEW, US-06 to US-10, US-12, US-13, US-14, US-16, US-46, US-47, US-48, US-51 to US-54
-//
-// PURPOSE:
-//   Interactive preview executable for Member 3:
-//   - Full Game Boy / Pokemon style intro cutscene with exact 9 dialogues,
-//     high-detail speaker portraits, and animated Ninjago pixel art characters
-//   - Interactive Monastery playfield: 3 battle lanes, hover & click selection,
-//     pagoda, torii gate, clan banners, lanterns, training area, cherry tree,
-//     monastery gate safe zone, and animated props (weapons, projectiles, collectible)
-//   - 3 Ninja (Kai, Zane, Cole) & Villains (Venomari, Pythor) with authentic
-//     Aseprite / Bullet Bunny style Running & Attacking animations!
-//   - Official Theme Currency: GOLDEN WEAPON SHARDS!
-//     HUD counter, dropped 3D spinning/bobbing shards in battle lanes, collection popups
-//   - Press R to replay cutscene anytime, Space/Esc to skip
-// ====================================================================
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <chrono>
-#include <cstdlib>
-#include <cmath>
-#include <vector>
+#include "core/Constants.h"
+#include "core/Input.h"
+#include "core/Game.h"
 #include <string>
 #include "scene/Scene.h"
 #include "cutscene/Cutscene.h"
@@ -151,7 +136,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
             }
         }
     }
-}
+#endif
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -178,54 +163,52 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_C)
             selectCardIfUnlocked(2);
     }
-    else if (action == GLFW_RELEASE)
-    {
-        if (key == GLFW_KEY_A)
-            forceAttack = false;
-        if (key == GLFW_KEY_W || key == GLFW_KEY_UP)
-            forceJump = false;
-        if (key == GLFW_KEY_S || key == GLFW_KEY_DOWN)
-            forceDuck = false;
-    }
-}
 
-GLFWwindow* createPreviewWindow()
-{
-    if (glfwInit() != GLFW_TRUE)
-        return nullptr;
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return -1;
+    }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Member 3 - Ninjago Preview (Game Boy RPG Edition)", nullptr, nullptr);
-    if (!window)
-    {
+    GLFWwindow* window = glfwCreateWindow(
+        static_cast<int>(Constants::WINDOW_WIDTH),
+        static_cast<int>(Constants::WINDOW_HEIGHT),
+        "Ninjago: Defend the Monastery (DMET 502)",
+        nullptr, nullptr
+    );
+
+    if (!window) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
-        return nullptr;
+        return -1;
     }
 
+    glfwShowWindow(window);
+    glfwFocusWindow(window);
     glfwMakeContextCurrent(window);
-    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
-    {
+    glfwSwapInterval(1); // Enable VSync
+
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
-        return nullptr;
+        return -1;
     }
 
-    glfwSetCursorPosCallback(window, cursorPosCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetKeyCallback(window, keyCallback);
+    int fbw = 0, fbh = 0;
+    glfwGetFramebufferSize(window, &fbw, &fbh);
+    glViewport(0, 0, fbw, fbh);
 
-    return window;
-}
-}
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-int main()
-{
-    GLFWwindow* window = createPreviewWindow();
-    if (!window)
-        return EXIT_FAILURE;
+    Input::instance().init(window);
 
     Scene scene;
     Cutscene cutscene;
@@ -483,8 +466,16 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+    if (!game.init(window)) {
+        std::cerr << "Failed to initialize Game" << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return -1;
+    }
+
+    game.run();
 
     glfwDestroyWindow(window);
     glfwTerminate();
-    return EXIT_SUCCESS;
+    return 0;
 }

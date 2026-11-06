@@ -1,125 +1,84 @@
 #include "Texture.h"
-// ====================================================================
-// FILE:     src/core/Texture.cpp
-// OWNER:    Member 3
-// TASKS:    M3-14
-// STATUS:   MEMBER 3 IMPLEMENTATION
-//
-// PURPOSE:
-//   Loads images into OpenGL textures and caches them so the same
-//   image is never loaded twice.
-//
-// RESPONSIBILITIES:
-//   - Load an image file into a texture
-//   - Cache textures by path
-//   - Bind a texture for drawing
-//
-// PLANNED PUBLIC INTERFACE (names to agree on, implemented in this file):
-//   - load(path)
-//   - bind(slot)
-//
-// INTERACTS WITH: Scene, Mesh, HUD, PlayerCards
-// ====================================================================
-
-#include "Texture.h"
-#include <glad/glad.h>
-#include <map>
 #include <fstream>
 #include <vector>
-#include <cstring>
+#include <iostream>
 
-namespace
-{
-std::map<std::string, unsigned int> cache;
-
-unsigned int createTexture(unsigned char* pixels, int width, int height, bool rgba)
-{
-    GLuint texture = 0;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, rgba ? GL_RGBA : GL_RGB, width, height, 0,
-                 rgba ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, pixels);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    return texture;
+TextureManager& TextureManager::instance() {
+    static TextureManager mgr;
+    return mgr;
 }
 
-// Load the BMP format supplied by tools such as Paint/GIMP; PNG/JPG can be
-// added later through the project's stb_image dependency without changing API.
-bool loadBmp(const std::string& path, std::vector<unsigned char>& pixels, int& width, int& height)
-{
-    std::ifstream file(path, std::ios::binary);
-    if (!file)
-        return false;
-    unsigned char header[54];
-    file.read(reinterpret_cast<char*>(header), 54);
-    if (header[0] != 'B' || header[1] != 'M')
-        return false;
-    width = header[18] | header[19] << 8 | header[20] << 16 | header[21] << 24;
-    height = header[22] | header[23] << 8 | header[24] << 16 | header[25] << 24;
-    int planes = header[26] | header[27] << 8;
-    int bits = header[28] | header[29] << 8;
-    if (planes != 1 || (bits != 24 && bits != 32) || width <= 0 || height <= 0)
-        return false;
-    int offset = header[10] | header[11] << 8 | header[12] << 16 | header[13] << 24;
-    file.seekg(offset, std::ios::beg);
-    int channels = bits / 8;
-    int stride = width * channels;
-    int rowPadding = stride % 4 ? 4 - stride % 4 : 0;
-    std::vector<unsigned char> row(static_cast<size_t>(width) * channels);
-    pixels.resize(static_cast<size_t>(width) * height * 4);
-    for (int y = 0; y < height; ++y)
-    {
-        file.read(reinterpret_cast<char*>(row.data()), row.size());
-        if (!file)
-            return false;
-        for (int x = 0; x < width; ++x)
-        {
-            size_t sourceIndex = static_cast<size_t>(x) * channels;
-            size_t targetIndex = (static_cast<size_t>(y) * width + x) * 4;
-            pixels[targetIndex + 0] = row[sourceIndex + 2];
-            pixels[targetIndex + 1] = row[sourceIndex + 1];
-            pixels[targetIndex + 2] = row[sourceIndex + 0];
-            pixels[targetIndex + 3] = channels == 4 ? row[sourceIndex + 3] : 255;
+TextureInfo TextureManager::createFromRGBA(const std::string& name, int width, int height, const unsigned char* data) {
+    if (m_textures.find(name) != m_textures.end()) {
+        return m_textures[name];
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    // NEAREST filtering is crucial for authentic Game Boy / Pokemon pixel art!
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    TextureInfo info{tex, width, height};
+    m_textures[name] = info;
+    return info;
+}
+
+TextureInfo TextureManager::get(const std::string& name) {
+    auto it = m_textures.find(name);
+    if (it != m_textures.end()) {
+        return it->second;
+    }
+
+    // Attempt to load from assets/sprites/<name>.bin
+    std::string binPath = "assets/sprites/" + name + ".bin";
+    std::ifstream file(binPath, std::ios::binary);
+    if (file.is_open()) {
+        uint32_t w = 0, h = 0;
+        file.read(reinterpret_cast<char*>(&w), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&h), sizeof(uint32_t));
+        if (w > 0 && h > 0 && w < 4096 && h < 4096) {
+            std::vector<unsigned char> buffer(w * h * 4);
+            file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+            return createFromRGBA(name, static_cast<int>(w), static_cast<int>(h), buffer.data());
         }
-        file.seekg(rowPadding, std::ios::cur);
+    }
+
+    std::cerr << "Could not find texture: " << name << " at " << binPath << std::endl;
+    return TextureInfo{0, 0, 0};
+}
+
+GLuint TextureManager::getID(const std::string& name) {
+    return get(name).id;
+}
+
+bool TextureManager::init() {
+    const std::vector<std::string> preloadList = {
+        "kai", "zane", "cole", "jay", "wu", "garmadon",
+        "venomari", "hypnobrai", "constrictai",
+        "shard", "sword", "shuriken", "acid", "sonic",
+        "monastery_gate", "cherry_tree", "stone_lantern",
+        "training_dummy", "prayer_gong", "dragon_banner"
+    };
+
+    for (const auto& s : preloadList) {
+        get(s);
     }
     return true;
 }
-}
 
-unsigned int Texture::load(const std::string& path)
-{
-    auto found = cache.find(path);
-    if (found != cache.end())
-        return found->second;
-
-    std::vector<unsigned char> pixels;
-    int width = 1, height = 1;
-    unsigned int texture = 0;
-    if (loadBmp(path, pixels, width, height))
-        texture = createTexture(pixels.data(), width, height, true);
-    else
-    {
-        unsigned char placeholder[4] = {255, 255, 255, 255};
-        texture = createTexture(placeholder, 1, 1, true);
+void TextureManager::cleanup() {
+    for (auto& pair : m_textures) {
+        if (pair.second.id != 0) {
+            glDeleteTextures(1, &pair.second.id);
+        }
     }
-    cache[path] = texture;
-    return texture;
-}
-
-void Texture::bind(unsigned int texture, unsigned int slot)
-{
-    glActiveTexture(GL_TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, texture);
-}
-
-void Texture::clearCache()
-{
-    for (const auto& entry : cache)
-        glDeleteTextures(1, &entry.second);
-    cache.clear();
+    m_textures.clear();
 }
