@@ -1,33 +1,43 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Shader.h
-// Loads, compiles and links shader programs and sets uniforms.
+// OWNER:    Member 1
+// TASKS:    M1-01
+// STATUS:   IMPLEMENTED
+//
+// PURPOSE:
+//   Loads, compiles and links shader programs from the
+//   assets/shaders folder and lets other code set uniforms.
 // ====================================================================
 
+#if __has_include(<glad/glad.h>)
 #include <glad/glad.h>
+#elif __has_include(<glad/gl.h>)
+#include <glad/gl.h>
+#endif
+
 #include <glm/glm.hpp>
 #include <string>
 
 class Shader {
 public:
-    GLuint id = 0;
+    unsigned int ID;
 
-    Shader() = default;
+    Shader();
     ~Shader();
 
-    bool loadFromFiles(const std::string& vertPath, const std::string& fragPath);
-    bool loadFromStrings(const std::string& vertSrc, const std::string& fragSrc);
-
+    bool load(const std::string& vertPath, const std::string& fragPath);
     void use() const;
 
+    void setBool(const std::string& name, bool value) const;
+    void setInt(const std::string& name, int value) const;
+    void setFloat(const std::string& name, float value) const;
+    void setVec2(const std::string& name, const glm::vec2& value) const;
+    void setVec3(const std::string& name, const glm::vec3& value) const;
+    void setVec4(const std::string& name, const glm::vec4& value) const;
     void setMat4(const std::string& name, const glm::mat4& mat) const;
-    void setVec4(const std::string& name, const glm::vec4& val) const;
-    void setVec3(const std::string& name, const glm::vec3& val) const;
-    void setVec2(const std::string& name, const glm::vec2& val) const;
-    void setFloat(const std::string& name, float val) const;
-    void setInt(const std::string& name, int val) const;
-    void setBool(const std::string& name, bool val) const;
 
 private:
-    GLuint compile(GLenum type, const char* src);
+    unsigned int compileShader(unsigned int type, const std::string& source, const std::string& stageName);
+    std::string readFile(const std::string& filePath);
 };

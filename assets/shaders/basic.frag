@@ -1,31 +1,30 @@
 #version 330 core
+// assets/shaders/basic.frag
+// OWNER: Member 1
+// Fragment shader for colored/textured shapes with damage tint and grayscale
+
 in vec2 TexCoord;
 out vec4 FragColor;
 
-uniform vec4  uColor;
-uniform float uRed;          // 0..1 damage tint (redder as health drops, US-43)
-uniform float uGray;         // 0..1 grayscale (locked cards, US-19)
-uniform int   uUseTexture;   // 1 if drawing a textured sprite, 0 if solid color
-uniform sampler2D uTexture;
+uniform vec4 u_Color;
+uniform vec4 u_Tint;
+uniform bool u_UseTexture;
+uniform sampler2D u_Texture;
+uniform bool u_Grayscale;
 
 void main() {
-    vec4 c = uColor;
-    if (uUseTexture == 1) {
-        vec4 texCol = texture(uTexture, TexCoord);
-        c *= texCol;
+    vec4 baseColor = u_Color;
+    if (u_UseTexture) {
+        baseColor = texture(u_Texture, TexCoord) * u_Color;
     }
-    
-    // Discard nearly fully transparent pixels for clean pixel-art sprites
-    if (c.a < 0.05) {
-        discard;
+
+    vec4 tintedColor = baseColor * u_Tint;
+
+    if (u_Grayscale) {
+        // Luminance weights (Rec. 601)
+        float gray = dot(tintedColor.rgb, vec3(0.299, 0.587, 0.114));
+        FragColor = vec4(vec3(gray), tintedColor.a);
+    } else {
+        FragColor = tintedColor;
     }
-    
-    // Damage feedback: blend towards bright damage red based on uRed (US-43)
-    vec3 tinted = mix(c.rgb, vec3(1.0, 0.12, 0.12), uRed * 0.85);
-    
-    // Locked card grayscale: luminance formula (US-19)
-    float gray = dot(tinted, vec3(0.299, 0.587, 0.114));
-    vec3 finalRgb = mix(tinted, vec3(gray), uGray);
-    
-    FragColor = vec4(finalRgb, c.a);
 }

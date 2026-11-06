@@ -1,38 +1,54 @@
 #pragma once
 // ====================================================================
 // FILE:     src/world/WaveManager.h
-// Spawns 3 enemy waves of increasing difficulty in random lanes.
+// OWNER:    Member 1
+// TASKS:    M1-06, M1-07
+// STATUS:   IMPLEMENTED
+//
+// PURPOSE:
+//   Spawner and wave controller.
+//
+// RESPONSIBILITIES:
+//   - Wave 1: 3+ Easy. Wave 2: 5+ Easy/Medium. Wave 3: 10+ mixed
+//   - Spawn at the right edge in a random lane on a timer
+//   - Wave starts at first enemy, ends at last spawn
+//   - Next wave begins only after all enemies are defeated
+//   - Report wave number and enemies remaining
+//
+// PLANNED PUBLIC INTERFACE:
+//   - update(dt, aliveEnemiesCount)
+//   - getCurrentWave()
+//   - getEnemiesRemaining()
+//   - allWavesFinished()
 // ====================================================================
 
 #include <vector>
-#include <memory>
-#include <string>
-#include "../entities/Enemy.h"
+#include "../entities/Entity.h"
 
 class WaveManager {
 public:
-    static WaveManager& instance();
+    WaveManager();
 
     void reset();
-    void update(float dt, std::vector<std::shared_ptr<Enemy>>& enemies);
+
+    // Updates spawner timer; returns a newly spawned enemy, or nullptr if no spawn this frame.
+    // aliveEnemiesCount is the number of active living enemies currently on the playfield.
+    Entity* update(float dt, int aliveEnemiesCount);
 
     int getCurrentWave() const { return m_currentWave; }
     int getTotalWaves() const { return 3; }
-    int getEnemiesRemaining() const { return m_enemiesRemainingInWave + m_aliveEnemiesCount; }
-    std::string getWaveName() const;
-
-    bool allWavesFinished() const { return m_allWavesCleared; }
-    bool isBetweenWaves() const { return m_betweenWavesTimer > 0.0f; }
+    int getEnemiesRemaining() const { return m_enemiesRemaining; }
+    bool allWavesFinished() const { return m_allWavesFinished; }
+    bool isWaveSpawningDone() const { return m_spawnQueue.empty(); }
 
 private:
-    WaveManager() = default;
+    int m_currentWave;
+    float m_spawnTimer;
+    bool m_allWavesFinished;
+    int m_enemiesRemaining;
 
-    int m_currentWave = 1;
-    int m_enemiesSpawnedInWave = 0;
-    int m_enemiesRemainingInWave = 0;
-    int m_aliveEnemiesCount = 0;
+    std::vector<EntityType> m_spawnQueue;
 
-    float m_spawnTimer = 0.0f;
-    float m_betweenWavesTimer = 0.0f;
-    bool m_allWavesCleared = false;
+    void setupWave(int waveNumber);
+    Entity* spawnEnemy(EntityType type);
 };

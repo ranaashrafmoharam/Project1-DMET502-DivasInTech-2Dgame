@@ -1,96 +1,113 @@
-#include "WaveManager.h"
-#include "../core/Constants.h"
-#include <cstdlib>
+// ====================================================================
+// FILE:     src/world/WaveManager.cpp
+// OWNER:    Member 1
+// TASKS:    M1-06, M1-07
+// STATUS:   IMPLEMENTED
+// ====================================================================
 
-WaveManager& WaveManager::instance() {
-    static WaveManager wm;
-    return wm;
+#include "WaveManager.h"
+#include "../entities/Enemy.h"
+#include <cstdlib>
+#include <iostream>
+
+WaveManager::WaveManager() {
+    reset();
 }
 
 void WaveManager::reset() {
     m_currentWave = 1;
-    m_enemiesSpawnedInWave = 0;
-    m_enemiesRemainingInWave = Constants::WAVE1_ENEMY_COUNT;
-    m_aliveEnemiesCount = 0;
-    m_spawnTimer = 1.0f; // first enemy spawns after 1s
-    m_betweenWavesTimer = 0.0f;
-    m_allWavesCleared = false;
+    m_allWavesFinished = false;
+    m_spawnTimer = 1.0f; // Brief delay before first enemy appears
+    setupWave(1);
 }
 
-std::string WaveManager::getWaveName() const {
-    if (m_currentWave == 1) return "SCOUTS (VENOMARI)";
-    if (m_currentWave == 2) return "THE TRIBES (VENOMARI & HYPNOBRAI)";
-    if (m_currentWave == 3) return "SERPENTINE ARMY (GENERALS & BRUTES)";
-    return "VICTORY";
-}
+void WaveManager::setupWave(int waveNumber) {
+    m_currentWave = waveNumber;
+    m_spawnQueue.clear();
 
-void WaveManager::update(float dt, std::vector<std::shared_ptr<Enemy>>& enemies) {
-    if (m_allWavesCleared) return;
-
-    // Count alive enemies currently on screen
-    m_aliveEnemiesCount = 0;
-    for (const auto& e : enemies) {
-        if (e && e->isAlive) m_aliveEnemiesCount++;
-    }
-
-    // Between waves break pause
-    if (m_betweenWavesTimer > 0.0f) {
-        m_betweenWavesTimer -= dt;
-        if (m_betweenWavesTimer <= 0.0f) {
-            // Start next wave
-            m_currentWave++;
-            m_enemiesSpawnedInWave = 0;
-            if (m_currentWave == 2) {
-                m_enemiesRemainingInWave = Constants::WAVE2_ENEMY_COUNT;
-            } else if (m_currentWave == 3) {
-                m_enemiesRemainingInWave = Constants::WAVE3_ENEMY_COUNT;
-            }
-            m_spawnTimer = 1.0f;
+    if (waveNumber == 1) {
+        // Wave 1: at least 3 Easy enemies
+        for (int i = 0; i < Constants::WAVE_1_COUNT; ++i) {
+            m_spawnQueue.push_back(EntityType::ENEMY_EASY);
         }
-        return;
+    } else if (waveNumber == 2) {
+        // Wave 2: at least 5 enemies (Easy and Medium mixed)
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+        m_spawnQueue.push_back(EntityType::ENEMY_MEDIUM);
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+        m_spawnQueue.push_back(EntityType::ENEMY_MEDIUM);
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+    } else if (waveNumber == 3) {
+        // Wave 3: at least 10 enemies (Easy, Medium, and Hard mixed)
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+        m_spawnQueue.push_back(EntityType::ENEMY_MEDIUM);
+        m_spawnQueue.push_back(EntityType::ENEMY_HARD);
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+        m_spawnQueue.push_back(EntityType::ENEMY_MEDIUM);
+        m_spawnQueue.push_back(EntityType::ENEMY_HARD);
+        m_spawnQueue.push_back(EntityType::ENEMY_EASY);
+        m_spawnQueue.push_back(EntityType::ENEMY_MEDIUM);
+        m_spawnQueue.push_back(EntityType::ENEMY_HARD);
+        m_spawnQueue.push_back(EntityType::ENEMY_HARD);
     }
 
-    // Spawning enemies inside the current wave
-    if (m_enemiesRemainingInWave > 0) {
+    m_enemiesRemaining = static_cast<int>(m_spawnQueue.size());
+    std::cout << "[WaveManager] Starting Wave " << m_currentWave << " with " << m_enemiesRemaining << " enemies." << std::endl;
+}
+
+Entity* WaveManager::spawnEnemy(EntityType type) {
+    int lane = std::rand() % Constants::LANE_COUNT;
+    UnitType unitType = UnitType::EasyEnemy;
+    switch (type) {
+        case EntityType::ENEMY_EASY:
+            unitType = UnitType::EasyEnemy;
+            break;
+        case EntityType::ENEMY_MEDIUM:
+            unitType = UnitType::MediumEnemy;
+            break;
+        case EntityType::ENEMY_HARD:
+            unitType = UnitType::HardEnemy;
+            break;
+        default:
+            return nullptr;
+    }
+
+    Enemy* enemy = new Enemy();
+    enemy->init(unitType, lane, Constants::ENEMY_SPAWN_X);
+    return enemy;
+}
+
+Entity* WaveManager::update(float dt, int aliveEnemiesCount) {
+    if (m_allWavesFinished) {
+        m_enemiesRemaining = 0;
+        return nullptr;
+    }
+
+    m_enemiesRemaining = static_cast<int>(m_spawnQueue.size()) + aliveEnemiesCount;
+
+    // Check if current wave is completely cleared
+    if (m_spawnQueue.empty() && aliveEnemiesCount == 0) {
+        if (m_currentWave < 3) {
+            setupWave(m_currentWave + 1);
+            m_spawnTimer = 2.0f; // Wave transition rest period
+            return nullptr;
+        } else {
+            m_allWavesFinished = true;
+            std::cout << "[WaveManager] All waves defeated! VICTORY!" << std::endl;
+            return nullptr;
+        }
+    }
+
+    // Spawn timer update
+    if (!m_spawnQueue.empty()) {
         m_spawnTimer -= dt;
         if (m_spawnTimer <= 0.0f) {
-            m_spawnTimer = Constants::SPAWN_INTERVAL;
-
-            // Pick random lane (US-34: appear at right-most edge in random lane)
-            int randomLane = std::rand() % Constants::NUM_LANES;
-            float spawnX = Constants::FIELD_X1 - 50.0f;
-
-            // Determine enemy type according to wave rules (US-39)
-            EntityType eType = EntityType::ENEMY_EASY;
-            if (m_currentWave == 1) {
-                // Wave 1: Easy only (Venomari)
-                eType = EntityType::ENEMY_EASY;
-            } else if (m_currentWave == 2) {
-                // Wave 2: Easy and Medium mixed
-                eType = (std::rand() % 2 == 0) ? EntityType::ENEMY_EASY : EntityType::ENEMY_MEDIUM;
-            } else {
-                // Wave 3: Easy, Medium, and Hard mixed
-                int roll = std::rand() % 10;
-                if (roll < 4) eType = EntityType::ENEMY_EASY;
-                else if (roll < 7) eType = EntityType::ENEMY_MEDIUM;
-                else eType = EntityType::ENEMY_HARD; // Hard Constrictai
-            }
-
-            enemies.push_back(std::make_shared<Enemy>(eType, randomLane, spawnX));
-            m_enemiesSpawnedInWave++;
-            m_enemiesRemainingInWave--;
-        }
-    } else {
-        // All enemies of this wave have spawned!
-        // Wave finishes only when all enemies on screen are cleared (spec)
-        if (m_aliveEnemiesCount == 0) {
-            if (m_currentWave < 3) {
-                // Pause before next wave starts
-                m_betweenWavesTimer = Constants::WAVE_REST_PAUSE;
-            } else {
-                // All 3 waves defeated! (US-49)
-                m_allWavesCleared = true;
-            }
+            EntityType nextEnemy = m_spawnQueue.front();
+            m_spawnQueue.erase(m_spawnQueue.begin());
+            m_spawnTimer = Constants::ENEMY_SPAWN_INTERVAL;
+            return spawnEnemy(nextEnemy);
         }
     }
+
+    return nullptr;
 }

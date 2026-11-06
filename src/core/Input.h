@@ -1,45 +1,47 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Input.h
-// Wraps GLFW callbacks into queries: mouse position, clicks, keys.
+// OWNER:    Member 1
+// TASKS:    M1-01, M1-04
+// STATUS:   IMPLEMENTED
+//
+// PURPOSE:
+//   Wraps raw GLFW callbacks into a simple query API so game code
+//   never touches GLFW directly.
+//
+// RESPONSIBILITIES:
+//   - Track mouse position in world coordinates
+//   - Track left-click events (pressed this frame)
+//   - Track W / Up, S / Down and Esc presses
 // ====================================================================
 
-#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
 class Input {
 public:
-    static Input& instance();
+    static void init(GLFWwindow* window);
+    static void update(); // Call at the beginning of each frame to update input state
 
-    void init(GLFWwindow* window);
-    void newFrame();
+    static glm::vec2 getMouseWorldPos();
+    static bool wasLeftClicked();
+    static bool jumpPressed();
+    static bool duckPressed();
+    static bool escPressed();
+    static bool pPressed();
 
-    // Queries
-    glm::vec2 getMouseWorldPos() const { return m_mouseWorld; }
-    bool wasLeftClicked() const { return m_leftClicked; }
-    bool isLeftDown() const { return m_leftDown; }
-    bool jumpPressed() const { return m_jumpPressed; }
-    bool duckPressed() const { return m_duckPressed; }
-    bool escPressed() const { return m_escPressed; }
-    bool spacePressed() const { return m_spacePressed; }
-    bool enterPressed() const { return m_enterPressed; }
-
-    // GLFW callback handlers
-    void onMouseButton(int button, int action);
-    void onKey(int key, int action);
-    void updateCursor(double xpos, double ypos, int winW, int winH);
+    // Callbacks for GLFW
+    static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 private:
-    Input() = default;
+    static glm::vec2 s_mousePos;
+    static bool s_leftClickedThisFrame;
+    static bool s_leftMouseDown;
 
-    glm::vec2 m_mouseWorld{0.0f, 0.0f};
-    bool m_leftClicked = false;
-    bool m_leftDown = false;
-
-    bool m_jumpPressed = false;
-    bool m_duckPressed = false;
-    bool m_escPressed = false;
-    bool m_spacePressed = false;
-    bool m_enterPressed = false;
+    static bool s_jumpPressedThisFrame;
+    static bool s_duckPressedThisFrame;
+    static bool s_escPressedThisFrame;
+    static bool s_pPressedThisFrame;
 };

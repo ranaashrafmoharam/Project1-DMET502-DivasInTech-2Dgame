@@ -1,52 +1,79 @@
 #pragma once
 // ====================================================================
 // FILE:     src/core/Game.h
-// The heart of the program: state machine, main loop, entity lists,
-// win/lose detection, reset, update, and render.
+// OWNER:    Member 1
+// TASKS:    M1-01, M1-03, M1-05, M1-11
+// STATUS:   IMPLEMENTED
+//
+// PURPOSE:
+//   The heart of the program. Owns the state machine, the main loop,
+//   all entity lists and the reset logic. Every other system is
+//   called from here.
 // ====================================================================
 
+#include <GLFW/glfw3.h>
 #include <vector>
-#include <memory>
 #include "GameState.h"
-#include "../entities/Player.h"
-#include "../entities/Enemy.h"
-#include "../entities/Projectile.h"
-
-struct GLFWwindow;
+#include "Constants.h"
+#include "../entities/Entity.h"
+#include "../world/LaneGrid.h"
+#include "../world/WaveManager.h"
+#include "../world/CollisionSystem.h"
+#include "../world/PlayerPlacement.h"
+#include "../scene/Scene.h"
+#include "../scene/LaneHighlight.h"
+#include "../cutscene/Cutscene.h"
 
 class Game {
 public:
-    Game() = default;
-    ~Game() = default;
+    Game();
+    ~Game();
 
-    bool init(GLFWwindow* window);
+    bool init();
     void run();
+    void shutdown();
 
-    void setState(GameState s);
+    void setState(GameState newState);
     GameState getState() const { return m_state; }
 
-    void startCutscene();
     void reset();
-    void quit();
-
     void update(float dt);
     void render();
 
+    // Entity and Economy accessors
     int getCoins() const { return m_coins; }
     void addCoins(int amount) { m_coins += amount; }
+    bool spendCoins(int amount);
 
-    void enableAutoTest(bool enable) { m_autoTest = enable; }
-    static bool saveScreenshotBMP(const std::string& path, int width, int height);
+    CardType getSelectedCard() const { return m_selectedCard; }
+    void setSelectedCard(CardType card) { m_selectedCard = card; }
+
+    LaneGrid& getLaneGrid() { return m_laneGrid; }
+    WaveManager& getWaveManager() { return m_waveManager; }
+    CollisionSystem& getCollisionSystem() { return m_collisionSystem; }
 
 private:
-    GLFWwindow* m_window = nullptr;
-    GameState m_state = GameState::MAIN_MENU;
-    bool m_autoTest = false;
-    int m_autoTestFrame = 0;
+    GLFWwindow* m_window;
+    GameState m_state;
+    int m_coins;
+    CardType m_selectedCard;
 
-    int m_coins = 30; // Starting coins (US-22: enough for 3 Melee players)
+    LaneGrid m_laneGrid;
+    WaveManager m_waveManager;
+    CollisionSystem m_collisionSystem;
+    Scene m_scene;
+    LaneHighlight m_laneHighlight;
+    Cutscene m_cutscene;
 
-    std::vector<std::shared_ptr<Player>> m_players;
-    std::vector<std::shared_ptr<Enemy>> m_enemies;
-    std::vector<std::shared_ptr<Projectile>> m_projectiles;
+    std::vector<Entity*> m_players;
+    std::vector<Entity*> m_enemies;
+    std::vector<Entity*> m_projectiles;
+    std::vector<Entity*> m_collectibles;
+
+    void processInput();
+    void cleanDeadEntities();
+    void renderPlayfield();
+    void renderEntities();
+    void renderHUD();
+    void renderOverlay();
 };

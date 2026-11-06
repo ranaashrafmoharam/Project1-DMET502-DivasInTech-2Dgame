@@ -1,36 +1,57 @@
 #pragma once
 // ====================================================================
 // FILE:     src/world/LaneGrid.h
-// Converts mouse position to lane, tracks hovered lane, toggles
-// selection (multiple lanes allowed) for jump/duck/placement.
+// OWNER:    Member 1
+// TASKS:    M1-04
+// STATUS:   IMPLEMENTED
+//
+// PURPOSE:
+//   The lane system: converts the mouse into a lane and tracks hover
+//   and selection.
+//
+// RESPONSIBILITIES:
+//   - Mouse position to lane index
+//   - Track hovered lane
+//   - Left click toggles lane selected; multiple lanes allowed
+//   - Provide the selected-lane list for jump/duck
+//
+// PLANNED PUBLIC INTERFACE:
+//   - update(mouse, click)
+//   - isHovered(lane)
+//   - isSelected(lane)
+//   - getSelectedLanes()
+//   - clear()
+//
+// INTERACTS WITH: Input, LaneHighlight, Game, Player
 // ====================================================================
 
-#include <glm/glm.hpp>
 #include <vector>
+#include <glm/glm.hpp>
 #include "../core/Constants.h"
 
 class LaneGrid {
 public:
-    static LaneGrid& instance();
+    LaneGrid();
 
-    void init();
-    void reset();
-
-    void update(glm::vec2 mousePos, bool leftClicked);
-    void draw();
+    void update(const glm::vec2& mousePos, bool leftClicked);
 
     int getHoveredLane() const { return m_hoveredLane; }
-    bool isLaneSelected(int lane) const;
-    void toggleLane(int lane);
-    void selectSingleLane(int lane);
-    void clearSelection();
+    bool isHovered(int lane) const;
+    bool isSelected(int lane) const;
+    const std::vector<int>& getSelectedLanes() const { return m_selectedLanes; }
 
-    std::vector<int> getSelectedLanes() const;
-    int laneAt(glm::vec2 worldPos) const;
+    void toggleLaneSelection(int lane);
+    void selectLane(int lane);
+    void deselectLane(int lane);
+    void clear(); // Deselects all lanes
+
+    // Helper: converts screen Y coordinate to lane index (0 .. LANE_COUNT-1), or -1 if outside
+    static int getLaneFromY(float y);
 
 private:
-    LaneGrid() = default;
+    int m_hoveredLane;
+    bool m_laneSelected[Constants::LANE_COUNT];
+    std::vector<int> m_selectedLanes;
 
-    int m_hoveredLane = -1;
-    bool m_selected[Constants::NUM_LANES] = {false};
+    void updateSelectedList();
 };

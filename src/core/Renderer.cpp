@@ -1,257 +1,383 @@
+// ====================================================================
+// FILE:     src/core/Renderer.cpp
+// OWNER:    Member 1
+// TASKS:    M1-01
+// STATUS:   IMPLEMENTED
+// ====================================================================
+
 #include "Renderer.h"
 #include "Constants.h"
-#include "Texture.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
-Renderer& Renderer::instance() {
-    static Renderer ren;
-    return ren;
+Renderer& Renderer::getInstance() {
+    static Renderer instance;
+    return instance;
+}
+
+Renderer::Renderer()
+    : m_projection(1.0f)
+    , m_quadVAO(0)
+    , m_quadVBO(0)
+    , m_quadEBO(0)
+    , m_currentTint(1.0f, 1.0f, 1.0f, 1.0f)
+    , m_tintBase(1.0f, 1.0f, 1.0f, 1.0f)
+    , m_tintAmount(1.0f)
+    , m_currentGrayscale(false)
+{
+    m_transformStack.push(glm::mat4(1.0f));
+}
+
+Renderer::~Renderer() {
+    shutdown();
 }
 
 bool Renderer::init() {
-    m_proj = glm::ortho(0.0f, Constants::WINDOW_WIDTH, 0.0f, Constants::WINDOW_HEIGHT, -1.0f, 1.0f);
-
-    // Load basic shader
-    if (!m_shader.loadFromFiles("assets/shaders/basic.vert", "assets/shaders/basic.frag")) {
-        std::cerr << "Renderer: failed to load basic shaders from files, compiling fallback..." << std::endl;
-        const char* fallbackVS = R"(#version 330 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aTexCoord;
-uniform mat4 uProj;
-uniform mat4 uModel;
-out vec2 TexCoord;
-void main() { gl_Position = uProj * uModel * vec4(aPos, 0.0, 1.0); TexCoord = aTexCoord; })";
-
-        const char* fallbackFS = R"(#version 330 core
-in vec2 TexCoord;
-out vec4 FragColor;
-uniform vec4 uColor;
-uniform float uRed;
-uniform float uGray;
-uniform int uUseTexture;
-uniform sampler2D uTexture;
-void main() {
-    vec4 c = uColor;
-    if (uUseTexture == 1) { c *= texture(uTexture, TexCoord); }
-    if (c.a < 0.05) discard;
-    vec3 tinted = mix(c.rgb, vec3(1.0, 0.12, 0.12), uRed * 0.85);
-    float gray = dot(tinted, vec3(0.299, 0.587, 0.114));
-    FragColor = vec4(mix(tinted, vec3(gray), uGray), c.a);
-})";
-        m_shader.loadFromStrings(fallbackVS, fallbackFS);
+    // Load default shader
+    if (!m_shader.load("assets/shaders/basic.vert", "assets/shaders/basic.frag")) {
+        std::cerr << "[Renderer] Warning: Could not load shaders from assets/shaders, attempting fallback paths..." << std::endl;
+        if (!m_shader.load("../assets/shaders/basic.vert", "../assets/shaders/basic.frag")) {
+            std::cerr << "[Renderer] Error: Failed to load basic shaders!" << std::endl;
+            return false;
+        }
     }
 
-    // 1. Unit quad: (x, y, u, v)
-    // In OpenGL texture coords: (0, 1) top-left, (1, 0) bottom-right
-    float quadVertices[] = {
-        // Pos      // UV
-        0.0f, 1.0f, 0.0f, 0.0f, // top-left
-        1.0f, 1.0f, 1.0f, 0.0f, // top-right
-        1.0f, 0.0f, 1.0f, 1.0f, // bottom-right
+    setProjection((float)Constants::SCREEN_WIDTH, (float)Constants::SCREEN_HEIGHT);
+    setupQuadBuffers();
 
-        0.0f, 1.0f, 0.0f, 0.0f, // top-left
-        1.0f, 0.0f, 1.0f, 1.0f, // bottom-right
-        0.0f, 0.0f, 0.0f, 1.0f  // bottom-left
+    // Enable blending for transparency
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    return true;
+}
+
+void Renderer::shutdown() {
+    if (m_quadVAO != 0) {
+        glDeleteVertexArrays(1, &m_quadVAO);
+        m_quadVAO = 0;
+    }
+    if (m_quadVBO != 0) {
+        glDeleteBuffers(1, &m_quadVBO);
+        m_quadVBO = 0;
+    }
+    if (m_quadEBO != 0) {
+        glDeleteBuffers(1, &m_quadEBO);
+        m_quadEBO = 0;
+    }
+}
+
+void Renderer::setupQuadBuffers() {
+    // Unit quad with (0,0) at top-left and (1,1) at bottom-right
+    float vertices[] = {
+        // x,     y,     u,    v
+        0.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f,
+        0.0f, 1.0f, 0.0f, 1.0f
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0
     };
 
     glGenVertexArrays(1, &m_quadVAO);
     glGenBuffers(1, &m_quadVBO);
+    glGenBuffers(1, &m_quadEBO);
+
     glBindVertexArray(m_quadVAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, m_quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_quadEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Position (layout = 0)
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
 
-    // 2. Unit circle fan
-    std::vector<float> circleData;
-    circleData.push_back(0.0f); circleData.push_back(0.0f);
-    circleData.push_back(0.5f); circleData.push_back(0.5f);
-    const int segments = 40;
-    for (int i = 0; i <= segments; ++i) {
-        float angle = 2.0f * 3.14159265f * (float)i / (float)segments;
-        float cosA = std::cos(angle);
-        float sinA = std::sin(angle);
-        circleData.push_back(cosA);
-        circleData.push_back(sinA);
-        circleData.push_back(0.5f + 0.5f * cosA);
-        circleData.push_back(0.5f + 0.5f * sinA);
-    }
-    m_circleVertexCount = segments + 2;
-
-    glGenVertexArrays(1, &m_circleVAO);
-    glGenBuffers(1, &m_circleVBO);
-    glBindVertexArray(m_circleVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, m_circleVBO);
-    glBufferData(GL_ARRAY_BUFFER, circleData.size() * sizeof(float), circleData.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // 3. Unit right triangle
-    float triVertices[] = {
-        0.0f, 0.0f, 0.0f, 1.0f,
-        1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f
-    };
-    glGenVertexArrays(1, &m_triVAO);
-    glGenBuffers(1, &m_triVBO);
-    glBindVertexArray(m_triVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, m_triVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triVertices), triVertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    // TexCoord (layout = 1)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
-
-    m_matrixStack.push_back(glm::mat4(1.0f));
-    return true;
 }
 
-void Renderer::cleanup() {
-    if (m_quadVAO != 0) glDeleteVertexArrays(1, &m_quadVAO);
-    if (m_quadVBO != 0) glDeleteBuffers(1, &m_quadVBO);
-    if (m_circleVAO != 0) glDeleteVertexArrays(1, &m_circleVAO);
-    if (m_circleVBO != 0) glDeleteBuffers(1, &m_circleVBO);
-    if (m_triVAO != 0) glDeleteVertexArrays(1, &m_triVAO);
-    if (m_triVBO != 0) glDeleteBuffers(1, &m_triVBO);
+void Renderer::setProjection(float width, float height) {
+    // Standard 2D orthographic: (0,0) top-left, (width, height) bottom-right
+    m_projection = glm::ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);
 }
 
-void Renderer::beginFrame() {
-    m_shader.use();
-    m_shader.setMat4("uProj", m_proj);
-    m_shader.setFloat("uRed", m_tint);
-    m_shader.setFloat("uGray", m_grayscale);
-    m_shader.setInt("uTexture", 0);
+void Renderer::pushTransform() {
+    m_transformStack.push(m_transformStack.top());
+    m_characterTransformStack.push_back(m_characterTransformStack.back());
 }
 
-void Renderer::setTint(float amount) {
-    m_tint = glm::clamp(amount, 0.0f, 1.0f);
-    m_shader.setFloat("uRed", m_tint);
-}
-
-void Renderer::setGrayscale(float amount) {
-    m_grayscale = glm::clamp(amount, 0.0f, 1.0f);
-    m_shader.setFloat("uGray", m_grayscale);
-}
-
-void Renderer::drawRect(float x, float y, float w, float h, const glm::vec4& col) {
-    m_shader.use();
-    glm::mat4 model = currentTransform();
-    model = glm::translate(model, glm::vec3(x, y, 0.0f));
-    model = glm::scale(model, glm::vec3(w, h, 1.0f));
-
-    m_shader.setMat4("uModel", model);
-    m_shader.setVec4("uColor", col);
-    m_shader.setInt("uUseTexture", 0);
-
-    glBindVertexArray(m_quadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-}
-
-void Renderer::drawRectOutline(float x, float y, float w, float h, float thickness, const glm::vec4& col) {
-    // Top
-    drawRect(x, y + h - thickness, w, thickness, col);
-    // Bottom
-    drawRect(x, y, w, thickness, col);
-    // Left
-    drawRect(x, y, thickness, h, col);
-    // Right
-    drawRect(x + w - thickness, y, thickness, h, col);
-}
-
-void Renderer::drawCircle(float cx, float cy, float r, const glm::vec4& col) {
-    m_shader.use();
-    glm::mat4 model = currentTransform();
-    model = glm::translate(model, glm::vec3(cx, cy, 0.0f));
-    model = glm::scale(model, glm::vec3(r, r, 1.0f));
-
-    m_shader.setMat4("uModel", model);
-    m_shader.setVec4("uColor", col);
-    m_shader.setInt("uUseTexture", 0);
-
-    glBindVertexArray(m_circleVAO);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, m_circleVertexCount);
-    glBindVertexArray(0);
-}
-
-void Renderer::drawTri(glm::vec2 a, glm::vec2 b, glm::vec2 c, const glm::vec4& col) {
-    m_shader.use();
-    glm::mat4 M(1.0f);
-    M[0] = glm::vec4(b.x - a.x, b.y - a.y, 0.0f, 0.0f);
-    M[1] = glm::vec4(c.x - a.x, c.y - a.y, 0.0f, 0.0f);
-    M[3] = glm::vec4(a.x, a.y, 0.0f, 1.0f);
-
-    glm::mat4 model = currentTransform() * M;
-    m_shader.setMat4("uModel", model);
-    m_shader.setVec4("uColor", col);
-    m_shader.setInt("uUseTexture", 0);
-
-    glBindVertexArray(m_triVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glBindVertexArray(0);
-}
-
-void Renderer::drawSprite(const std::string& name, float x, float y, float w, float h, bool flipX, float rotRad) {
-    TextureInfo tex = TextureManager::instance().get(name);
-    if (tex.id == 0) {
-        // Fallback placeholder rect if texture missing
-        drawRect(x, y, w, h, glm::vec4(0.8f, 0.2f, 0.8f, 1.0f));
-        return;
-    }
-
-    m_shader.use();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex.id);
-
-    glm::mat4 model = currentTransform();
-    model = glm::translate(model, glm::vec3(x, y, 0.0f));
-    if (rotRad != 0.0f) {
-        model = glm::translate(model, glm::vec3(w * 0.5f, h * 0.5f, 0.0f));
-        model = glm::rotate(model, rotRad, glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-w * 0.5f, -h * 0.5f, 0.0f));
-    }
-    if (flipX) {
-        model = glm::translate(model, glm::vec3(w, 0.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(-w, h, 1.0f));
-    } else {
-        model = glm::scale(model, glm::vec3(w, h, 1.0f));
-    }
-
-    m_shader.setMat4("uModel", model);
-    m_shader.setVec4("uColor", glm::vec4(1.0f));
-    m_shader.setInt("uUseTexture", 1);
-    m_shader.setInt("uTexture", 0);
-
-    glBindVertexArray(m_quadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-}
-
-void Renderer::drawSpriteCentered(const std::string& name, float cx, float cy, float w, float h, bool flipX, float rotRad) {
-    drawSprite(name, cx - w * 0.5f, cy - h * 0.5f, w, h, flipX, rotRad);
-}
-
-void Renderer::pushTransform(const glm::mat4& m) {
-    m_matrixStack.push_back(currentTransform() * m);
+void Renderer::pushTransform(const Transform2D& transform) {
+    pushTransform();
+    m_characterTransformStack.back() =
+        Transform2D::compose(m_characterTransformStack.back(), transform);
+    glm::mat4 matrix(1.0f);
+    matrix = glm::translate(matrix, glm::vec3(transform.translation.x, transform.translation.y, 0.0f));
+    matrix = glm::rotate(matrix, transform.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    matrix = glm::scale(matrix, glm::vec3(transform.scale.x, transform.scale.y, 1.0f));
+    applyTransform(matrix);
 }
 
 void Renderer::popTransform() {
-    if (m_matrixStack.size() > 1) {
-        m_matrixStack.pop_back();
+    if (m_transformStack.size() > 1) {
+        m_transformStack.pop();
+    }
+    if (m_characterTransformStack.size() > 1) {
+        m_characterTransformStack.pop_back();
     }
 }
 
-glm::mat4 Renderer::currentTransform() const {
-    return m_matrixStack.empty() ? glm::mat4(1.0f) : m_matrixStack.back();
+void Renderer::beginFrame() {
+    resetTransform();
+    m_characterTransformStack.assign(1, Transform2D{});
+    resetShaderState();
+}
+
+void Renderer::applyTransform(const glm::mat4& transform) {
+    m_transformStack.top() = m_transformStack.top() * transform;
+}
+
+void Renderer::resetTransform() {
+    while (m_transformStack.size() > 1) {
+        m_transformStack.pop();
+    }
+    m_transformStack.top() = glm::mat4(1.0f);
+}
+
+const glm::mat4& Renderer::getCurrentTransform() const {
+    return m_transformStack.top();
+}
+
+void Renderer::setTint(const glm::vec4& tint) {
+    m_tintBase = tint;
+    m_currentTint = glm::mix(glm::vec4(1.0f), m_tintBase, m_tintAmount);
+}
+
+void Renderer::setTint(const Vec4& tint) {
+    m_characterTint = tint;
+    setTint(glm::vec4(tint.x, tint.y, tint.z, tint.w));
+}
+
+void Renderer::setTintAmount(float amount) {
+    m_characterTintAmount = clampf(amount, 0.0f, 1.0f);
+    m_tintAmount = m_characterTintAmount;
+    m_currentTint = glm::mix(glm::vec4(1.0f), m_tintBase, m_tintAmount);
+}
+
+void Renderer::setGrayscale(bool enabled) {
+    m_currentGrayscale = enabled;
+}
+
+void Renderer::resetShaderState() {
+    m_currentTint = glm::vec4(1.0f);
+    m_tintBase = glm::vec4(1.0f);
+    m_tintAmount = 1.0f;
+    m_characterTint = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f };
+    m_characterTintAmount = 0.0f;
+    m_currentGrayscale = false;
+}
+
+void Renderer::drawQuad(float x, float y, float width, float height, const glm::vec4& color, unsigned int textureID) {
+    glm::mat4 model = m_transformStack.top();
+    model = glm::translate(model, glm::vec3(x, y, 0.0f));
+    model = glm::scale(model, glm::vec3(width, height, 1.0f));
+
+    m_shader.use();
+    m_shader.setMat4("u_Projection", m_projection);
+    m_shader.setMat4("u_Model", model);
+    m_shader.setVec4("u_Color", color);
+    m_shader.setVec4("u_Tint", m_currentTint);
+    m_shader.setBool("u_Grayscale", m_currentGrayscale);
+
+    if (textureID != 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        m_shader.setInt("u_Texture", 0);
+        m_shader.setBool("u_UseTexture", true);
+    } else {
+        m_shader.setBool("u_UseTexture", false);
+    }
+
+    glBindVertexArray(m_quadVAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+void Renderer::drawQuadCentered(float x, float y, float width, float height, const glm::vec4& color, unsigned int textureID) {
+    drawQuad(x - width * 0.5f, y - height * 0.5f, width, height, color, textureID);
+}
+
+void Renderer::drawQuad(const Vec2& center, const Vec2& size, const Vec4& color, float rotation) {
+    pushTransform(Transform2D(center, rotation));
+    drawQuad(-size.x * 0.5f, -size.y * 0.5f, size.x, size.y,
+             glm::vec4(color.x, color.y, color.z, color.w));
+    popTransform();
+}
+
+void Renderer::drawCircle(const Vec2& center, float radius, const Vec4& color, int segments) {
+    const int strips = std::max(8, std::min(segments, 48));
+    for (int i = 0; i < strips; ++i) {
+        const float y0 = -radius + (2.0f * radius * static_cast<float>(i)) / strips;
+        const float y1 = -radius + (2.0f * radius * static_cast<float>(i + 1)) / strips;
+        const float middle = (y0 + y1) * 0.5f;
+        const float halfWidth = std::sqrt(std::max(0.0f, radius * radius - middle * middle));
+        drawQuad({ center.x, center.y + middle }, { halfWidth * 2.0f, y1 - y0 }, color);
+    }
+}
+
+void Renderer::drawTriangle(const Vec2& a, const Vec2& b, const Vec2& c, const Vec4& color) {
+    const Vec2 points[] = { a, b, c };
+    const float minY = std::min(a.y, std::min(b.y, c.y));
+    const float maxY = std::max(a.y, std::max(b.y, c.y));
+    const int strips = 16;
+    for (int i = 0; i < strips; ++i) {
+        const float y0 = minY + (maxY - minY) * static_cast<float>(i) / strips;
+        const float y1 = minY + (maxY - minY) * static_cast<float>(i + 1) / strips;
+        const float middle = (y0 + y1) * 0.5f;
+        float intersections[3];
+        int count = 0;
+        for (int edge = 0; edge < 3; ++edge) {
+            const Vec2& p0 = points[edge];
+            const Vec2& p1 = points[(edge + 1) % 3];
+            if ((p0.y <= middle && p1.y > middle) || (p1.y <= middle && p0.y > middle)) {
+                const float t = (middle - p0.y) / (p1.y - p0.y);
+                intersections[count++] = p0.x + (p1.x - p0.x) * t;
+            }
+        }
+        if (count < 2) continue;
+        const float left = std::min(intersections[0], intersections[1]);
+        const float right = std::max(intersections[0], intersections[1]);
+        drawQuad({ (left + right) * 0.5f, (y0 + y1) * 0.5f },
+                 { right - left, y1 - y0 }, color);
+    }
+}
+
+void Renderer::drawTrapezoid(const Vec2& center, const Vec2& size, float topWidthScale,
+                             const Vec4& color, float rotation) {
+    const float scale = glm::clamp(topWidthScale, 0.0f, 1.0f);
+    const int strips = 16;
+    pushTransform();
+    glm::mat4 matrix(1.0f);
+    matrix = glm::translate(matrix, glm::vec3(center.x, center.y, 0.0f));
+    matrix = glm::rotate(matrix, rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    applyTransform(matrix);
+    for (int i = 0; i < strips; ++i) {
+        const float t = (static_cast<float>(i) + 0.5f) / strips;
+        const float width = size.x * (1.0f + (scale - 1.0f) * t);
+        drawQuad(-width * 0.5f, -size.y * 0.5f + size.y * i / strips,
+                 width, size.y / strips,
+                 glm::vec4(color.x, color.y, color.z, color.w));
+    }
+    popTransform();
+}
+
+void Renderer::drawBorder(float x, float y, float width, float height, float thickness, const glm::vec4& color) {
+    // Top, bottom, left, right edges
+    drawQuad(x, y, width, thickness, color);
+    drawQuad(x, y + height - thickness, width, thickness, color);
+    drawQuad(x, y, thickness, height, color);
+    drawQuad(x + width - thickness, y, thickness, height, color);
+}
+
+// 5x7 ASCII bitmap font table (ASCII 32 ' ' to 90 'Z')
+static const uint8_t FONT_5X7[][5] = {
+    {0x00, 0x00, 0x00, 0x00, 0x00}, // 32 ' '
+    {0x00, 0x00, 0x5F, 0x00, 0x00}, // 33 '!'
+    {0x00, 0x07, 0x00, 0x07, 0x00}, // 34 '"'
+    {0x14, 0x7F, 0x14, 0x7F, 0x14}, // 35 '#'
+    {0x24, 0x2A, 0x7F, 0x2A, 0x12}, // 36 '$'
+    {0x23, 0x13, 0x08, 0x64, 0x62}, // 37 '%'
+    {0x36, 0x49, 0x55, 0x22, 0x50}, // 38 '&'
+    {0x00, 0x05, 0x03, 0x00, 0x00}, // 39 '\''
+    {0x00, 0x1C, 0x22, 0x41, 0x00}, // 40 '('
+    {0x00, 0x41, 0x22, 0x1C, 0x00}, // 41 ')'
+    {0x14, 0x08, 0x3E, 0x08, 0x14}, // 42 '*'
+    {0x08, 0x08, 0x3E, 0x08, 0x08}, // 43 '+'
+    {0x00, 0x50, 0x30, 0x00, 0x00}, // 44 ','
+    {0x08, 0x08, 0x08, 0x08, 0x08}, // 45 '-'
+    {0x00, 0x60, 0x60, 0x00, 0x00}, // 46 '.'
+    {0x20, 0x10, 0x08, 0x04, 0x02}, // 47 '/'
+    {0x3E, 0x51, 0x49, 0x45, 0x3E}, // 48 '0'
+    {0x00, 0x42, 0x7F, 0x40, 0x00}, // 49 '1'
+    {0x42, 0x61, 0x51, 0x49, 0x46}, // 50 '2'
+    {0x21, 0x41, 0x45, 0x4B, 0x31}, // 51 '3'
+    {0x18, 0x14, 0x12, 0x7F, 0x10}, // 52 '4'
+    {0x27, 0x45, 0x45, 0x45, 0x39}, // 53 '5'
+    {0x3C, 0x4A, 0x49, 0x49, 0x30}, // 54 '6'
+    {0x01, 0x71, 0x09, 0x05, 0x03}, // 55 '7'
+    {0x36, 0x49, 0x49, 0x49, 0x36}, // 56 '8'
+    {0x06, 0x49, 0x49, 0x29, 0x1E}, // 57 '9'
+    {0x00, 0x36, 0x36, 0x00, 0x00}, // 58 ':'
+    {0x00, 0x56, 0x36, 0x00, 0x00}, // 59 ';'
+    {0x08, 0x14, 0x22, 0x41, 0x00}, // 60 '<'
+    {0x14, 0x14, 0x14, 0x14, 0x14}, // 61 '='
+    {0x00, 0x41, 0x22, 0x14, 0x08}, // 62 '>'
+    {0x02, 0x01, 0x51, 0x09, 0x06}, // 63 '?'
+    {0x32, 0x49, 0x79, 0x41, 0x3E}, // 64 '@'
+    {0x7E, 0x11, 0x11, 0x11, 0x7E}, // 65 'A'
+    {0x7F, 0x49, 0x49, 0x49, 0x36}, // 66 'B'
+    {0x3E, 0x41, 0x41, 0x41, 0x22}, // 67 'C'
+    {0x7F, 0x41, 0x41, 0x22, 0x1C}, // 68 'D'
+    {0x7F, 0x49, 0x49, 0x49, 0x41}, // 69 'E'
+    {0x7F, 0x09, 0x09, 0x09, 0x01}, // 70 'F'
+    {0x3E, 0x41, 0x49, 0x49, 0x7A}, // 71 'G'
+    {0x7F, 0x08, 0x08, 0x08, 0x7F}, // 72 'H'
+    {0x00, 0x41, 0x7F, 0x41, 0x00}, // 73 'I'
+    {0x20, 0x40, 0x41, 0x3F, 0x01}, // 74 'J'
+    {0x7F, 0x08, 0x14, 0x22, 0x41}, // 75 'K'
+    {0x7F, 0x40, 0x40, 0x40, 0x40}, // 76 'L'
+    {0x7F, 0x02, 0x0C, 0x02, 0x7F}, // 77 'M'
+    {0x7F, 0x04, 0x08, 0x10, 0x7F}, // 78 'N'
+    {0x3E, 0x41, 0x41, 0x41, 0x3E}, // 79 'O'
+    {0x7F, 0x09, 0x09, 0x09, 0x06}, // 80 'P'
+    {0x3E, 0x41, 0x51, 0x21, 0x5E}, // 81 'Q'
+    {0x7F, 0x09, 0x19, 0x29, 0x46}, // 82 'R'
+    {0x46, 0x49, 0x49, 0x49, 0x31}, // 83 'S'
+    {0x01, 0x01, 0x7F, 0x01, 0x01}, // 84 'T'
+    {0x3F, 0x40, 0x40, 0x40, 0x3F}, // 85 'U'
+    {0x1F, 0x20, 0x40, 0x20, 0x1F}, // 86 'V'
+    {0x7F, 0x20, 0x18, 0x20, 0x7F}, // 87 'W'
+    {0x63, 0x14, 0x08, 0x14, 0x63}, // 88 'X'
+    {0x07, 0x08, 0x70, 0x08, 0x07}, // 89 'Y'
+    {0x61, 0x51, 0x49, 0x45, 0x43}  // 90 'Z'
+};
+
+float Renderer::getTextWidth(const std::string& text, float scale) {
+    return text.length() * (6.0f * scale);
+}
+
+void Renderer::drawText(const std::string& text, float x, float y, float scale, const glm::vec4& color) {
+    float curX = x;
+    for (char c : text) {
+        char upper = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        if (upper >= 32 && upper <= 90) {
+            int idx = upper - 32;
+            const uint8_t* cols = FONT_5X7[idx];
+            for (int col = 0; col < 5; ++col) {
+                uint8_t line = cols[col];
+                for (int row = 0; row < 7; ++row) {
+                    if ((line >> row) & 1) {
+                        drawQuad(curX + col * scale, y + row * scale, scale, scale, color);
+                    }
+                }
+            }
+        }
+        curX += 6.0f * scale; // 5 cols + 1 space
+    }
+}
+
+void Renderer::drawTextCentered(const std::string& text, float centerX, float centerY, float scale, const glm::vec4& color) {
+    float width = getTextWidth(text, scale);
+    float height = 7.0f * scale;
+    drawText(text, centerX - width * 0.5f, centerY - height * 0.5f, scale, color);
 }
