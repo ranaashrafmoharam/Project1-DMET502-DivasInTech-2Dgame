@@ -333,25 +333,36 @@ void Menus::drawSound() {
     const float W = Constants::WINDOW_WIDTH;
     const float H = Constants::WINDOW_HEIGHT;
 
-    ren.drawRect(0, 0, W, H, glm::vec4(0.07f, 0.09f, 0.15f, 1.0f));
+    drawMainMenuBackground(ren, W, H);
 
-    ren.drawSprite("settings_frame", (W - 560.0f) * 0.5f, 50.0f, 560.0f, 470.0f);
-
-    // Title box
-    tr.drawTextCenteredWithShadow("SOUND & AUDIO SETTINGS", W * 0.5f, 540.0f, 4.0f,
+    tr.drawTextCenteredWithShadow("SOUND & AUDIO SETTINGS", W * 0.5f, 595.0f, 3.7f,
                                   glm::vec4(1.0f, 0.88f, 0.30f, 1.0f));
+
+    // Main-menu style frame around the settings page controls.
+    const float settingsX = (W - 460.0f) * 0.5f - 18.0f;
+    const float settingsY = 82.0f;
+    const float settingsW = 496.0f;
+    const float settingsH = 420.0f;
+    ren.drawRect(settingsX + 4.0f, settingsY - 4.0f, settingsW, settingsH,
+                 glm::vec4(0.03f, 0.03f, 0.07f, 0.90f));
+    ren.drawRect(settingsX - 3.0f, settingsY - 3.0f, settingsW + 6.0f, settingsH + 6.0f,
+                 glm::vec4(0.78f, 0.62f, 0.20f, 1.0f));
+    ren.drawRect(settingsX, settingsY, settingsW, settingsH,
+                 glm::vec4(0.07f, 0.08f, 0.14f, 1.0f));
+    ren.drawRectOutline(settingsX + 3.0f, settingsY + 3.0f, settingsW - 6.0f, settingsH - 6.0f,
+                        2.0f, glm::vec4(0.32f, 0.38f, 0.50f, 1.0f));
 
     // Volume level bar (US-57)
     float vol = AudioManager::instance().getVolume();
     bool muted = AudioManager::instance().isMuted();
 
     std::string volStr = "VOLUME: " + (muted ? std::string("MUTED") : std::to_string((int)(vol * 100)) + "%");
-    tr.drawTextCenteredWithShadow(volStr, W * 0.5f, 440.0f, 2.8f,
+    tr.drawTextCenteredWithShadow(volStr, W * 0.5f, 455.0f, 2.4f,
                                   muted ? glm::vec4(0.9f, 0.3f, 0.3f, 1.0f) : glm::vec4(0.4f, 0.9f, 0.4f, 1.0f));
 
     // Visual volume meter
     float meterW = 340.0f, meterH = 24.0f;
-    float meterX = (W - meterW) * 0.5f, meterY = 400.0f;
+    float meterX = (W - meterW) * 0.5f, meterY = 415.0f;
     ren.drawRect(meterX - 2, meterY - 2, meterW + 4, meterH + 4, glm::vec4(0.3f, 0.4f, 0.5f, 1.0f));
     ren.drawRect(meterX, meterY, meterW, meterH, glm::vec4(0.1f, 0.14f, 0.2f, 1.0f));
     if (!muted && vol > 0.01f) {
