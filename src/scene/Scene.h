@@ -1,4 +1,5 @@
 #pragma once
+#include "M3Draw.h"
 // ====================================================================
 // FILE:     src/scene/Scene.h
 // Draws the monastery background, lanes, home base, and environment.
